@@ -1,0 +1,6 @@
+{
+  "name": "Prime3Dworld – Premium 3D Printing E-Commerce",
+  "description": "Bespoke personalized 3D printed figurines, custom name sculptures, devotional idols, and creative home decor with direct WhatsApp ordering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
