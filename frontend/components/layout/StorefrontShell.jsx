@@ -17,10 +17,10 @@ export default function StorefrontShell({ children }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
       <AnnouncementBar />
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 w-full max-w-full min-w-0">{children}</main>
       <Footer />
       <CartDrawer />
       <FloatingWhatsApp />

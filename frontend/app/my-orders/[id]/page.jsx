@@ -66,14 +66,14 @@ export default function CustomerOrderDetailPage({ params }) {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200/80 rounded-full">
             <CheckCircle className="w-3.5 h-3.5 text-blue-600" />
-            <span>Confirmed & Scheduled for 3D Print</span>
+            <span>Confirmed & Scheduled</span>
           </span>
         );
       case "in_production":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200/80 rounded-full">
             <Package className="w-3.5 h-3.5 text-purple-600" />
-            <span>3D Printing In Progress</span>
+            <span>Processing</span>
           </span>
         );
       case "shipped":
@@ -102,7 +102,7 @@ export default function CustomerOrderDetailPage({ params }) {
   const stages = [
     { key: "pending", label: "Received", icon: Clock },
     { key: "confirmed", label: "Confirmed", icon: ShieldCheck },
-    { key: "in_production", label: "3D Printing", icon: Package },
+    { key: "in_production", label: "Processing", icon: Package },
     { key: "shipped", label: "Dispatched", icon: Truck },
     { key: "delivered", label: "Delivered", icon: CheckCircle },
   ];

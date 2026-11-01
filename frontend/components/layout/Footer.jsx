@@ -6,7 +6,7 @@ import { CATEGORIES } from "@/data/categories";
 
 export default function Footer() {
   return (
-    <footer className="bg-stone-900 text-stone-300 pt-16 pb-12 border-t border-stone-800">
+    <footer className="bg-stone-900 text-stone-300 pt-12 sm:pt-16 pb-10 sm:pb-12 border-t border-stone-800 w-full max-w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8 pb-12 border-b border-stone-800">
           {/* Col 1: Brand Profile */}
@@ -123,11 +123,11 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500">
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500 text-center sm:text-left">
           <div>
-            © {new Date().getFullYear()} Prime3Dworld. All rights reserved. Crafted for custom 3D printing excellence.
+            © {new Date().getFullYear()} Prime3Dworld. All rights reserved.
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             <Link href="/shop" className="hover:text-stone-400 transition-colors">
               Catalog
             </Link>

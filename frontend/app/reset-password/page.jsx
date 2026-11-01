@@ -72,8 +72,8 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="py-12 sm:py-20 max-w-md mx-auto px-4 sm:px-6">
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 sm:p-8 space-y-6">
+    <div className="w-full max-w-md mx-auto py-8 sm:py-16 px-3.5 sm:px-6">
+      <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-sm p-5 sm:p-8 space-y-5 sm:space-y-6">
         <Link
           href="/login"
           className="inline-flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors"

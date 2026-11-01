@@ -55,10 +55,10 @@ export default function Header() {
             : "bg-[#FAF8F5] border-b border-stone-200/50 py-4"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
             {/* Zone 1: Single element brand mark */}
-            <div className="shrink-0 flex items-center gap-3">
+            <div className="shrink-0 flex items-center gap-1.5 sm:gap-3">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="p-1.5 text-stone-600 hover:text-stone-900 rounded-lg lg:hidden"
@@ -93,7 +93,7 @@ export default function Header() {
             </nav>
 
             {/* Zone 3: Actions & utilities */}
-            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
               {/* Search Trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}

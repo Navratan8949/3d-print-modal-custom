@@ -362,8 +362,8 @@ exports.sendOrderStatusEmail = async (order) => {
 
     const statusLabels = {
       pending: "Received / Under Review",
-      confirmed: "Confirmed & Scheduled for 3D Print",
-      in_production: "Currently 3D Printing & Hand Detailing 🖨️",
+      confirmed: "Confirmed & Scheduled",
+      in_production: "Processing / In Production 📦",
       shipped: "Shipped & In Transit 📦",
       delivered: "Delivered Successfully 🎉",
       cancelled: "Order Cancelled",
