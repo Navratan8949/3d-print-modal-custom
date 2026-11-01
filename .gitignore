@@ -33,3 +33,4 @@ build/
 
 # Coverage
 coverage/
+.DS_Store
