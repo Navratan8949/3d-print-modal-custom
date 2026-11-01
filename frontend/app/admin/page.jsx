@@ -49,7 +49,7 @@ export default function AdminDashboardPage() {
       case "in_production":
         return (
           <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-200">
-            Printing
+            Processing
           </span>
         );
       case "shipped":
@@ -158,14 +158,14 @@ export default function AdminDashboardPage() {
         <div className="bg-white rounded-3xl p-5 border border-purple-200/90 bg-purple-50/20 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider">
-              In 3D Print / Prep
+              In Processing
             </span>
             <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
               <Package className="w-4 h-4" />
             </div>
           </div>
           <div className="text-3xl font-serif font-bold text-purple-900">{stats.inProductionOrders}</div>
-          <p className="text-[11px] text-purple-700">Active machine slicing / printing</p>
+          <p className="text-[11px] text-purple-700">Active order preparation & packaging</p>
         </div>
 
         <div className="bg-white rounded-3xl p-5 border border-stone-200/90 shadow-2xs space-y-3">

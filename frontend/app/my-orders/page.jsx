@@ -68,7 +68,7 @@ export default function MyOrdersPage() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-purple-50 text-purple-800 border border-purple-200/60 rounded-full">
             <Package className="w-3 h-3 text-purple-600" />
-            <span>3D Printing In Progress</span>
+            <span>Processing</span>
           </span>
         );
       case "shipped":

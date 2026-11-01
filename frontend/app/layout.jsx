@@ -3,6 +3,12 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import StorefrontShell from "@/components/layout/StorefrontShell";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata = {
   title: "Prime3Dworld – Premium 3D Printing E-Commerce",
   description:
@@ -30,7 +36,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-[#FAF8F5] text-stone-900 antialiased selection:bg-amber-200 selection:text-amber-900 min-h-screen flex flex-col justify-between">
+      <body className="bg-[#FAF8F5] text-stone-900 antialiased selection:bg-amber-200 selection:text-amber-900 min-h-screen flex flex-col justify-between w-full max-w-full overflow-x-hidden">
         <AuthProvider>
           <CartProvider>
             <StorefrontShell>{children}</StorefrontShell>

@@ -207,7 +207,7 @@ export default function HeroCardStack({ products = HERO_PRODUCTS }) {
 
   if (!mounted || items.length === 0) {
     return (
-      <div className="relative w-[300px] sm:w-[350px] aspect-[3/4] max-h-[460px] flex items-center justify-center bg-stone-100 rounded-2xl">
+      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] aspect-[3/4] max-h-[460px] flex items-center justify-center bg-stone-100 rounded-2xl">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-amber-600 rounded-full animate-spin" />
       </div>
     );
@@ -218,12 +218,12 @@ export default function HeroCardStack({ products = HERO_PRODUCTS }) {
 
   return (
     <div
-      className="relative w-full flex flex-col items-center justify-center select-none"
+      className="relative w-full flex flex-col items-center justify-center select-none overflow-hidden py-2"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* 3D Card Stack Stage with Left and Right Chevrons */}
-      <div className="relative w-[300px] sm:w-[350px] aspect-[3/4] max-h-[470px]">
+      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] aspect-[3/4] max-h-[470px]">
         {visibleCards.map(({ prod, idx }) => (
           <StackCard
             key={prod.id}
@@ -241,10 +241,10 @@ export default function HeroCardStack({ products = HERO_PRODUCTS }) {
             e.stopPropagation();
             cyclePrev();
           }}
-          className="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-stone-50 text-stone-800 shadow-md border border-stone-200/90 flex items-center justify-center transition-all hover:scale-105 active:scale-90"
+          className="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-stone-50 text-stone-800 shadow-md border border-stone-200/90 flex items-center justify-center transition-all hover:scale-105 active:scale-90"
           aria-label="Previous creation"
         >
-          <ChevronLeft className="w-5 h-5 text-stone-700" />
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-stone-700" />
         </button>
 
         {/* Floating Right Chevron */}
@@ -254,15 +254,15 @@ export default function HeroCardStack({ products = HERO_PRODUCTS }) {
             e.stopPropagation();
             cycleNext();
           }}
-          className="absolute -right-4 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-stone-50 text-stone-800 shadow-md border border-stone-200/90 flex items-center justify-center transition-all hover:scale-105 active:scale-90"
+          className="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-stone-50 text-stone-800 shadow-md border border-stone-200/90 flex items-center justify-center transition-all hover:scale-105 active:scale-90"
           aria-label="Next creation"
         >
-          <ChevronRight className="w-5 h-5 text-stone-700" />
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-stone-700" />
         </button>
       </div>
 
       {/* Navigation Controls Bar */}
-      <div className="mt-5 flex items-center justify-between w-[300px] sm:w-[350px] px-1">
+      <div className="mt-5 flex items-center justify-between w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] px-1">
         <div className="flex items-center gap-1.5">
           <button
             onClick={cyclePrev}

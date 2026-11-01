@@ -137,7 +137,7 @@ function AdminOrdersContent() {
       case "confirmed":
         return <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-blue-50 text-blue-800 border border-blue-200">Confirmed</span>;
       case "in_production":
-        return <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-200">3D Printing</span>;
+        return <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-200">Processing</span>;
       case "shipped":
         return <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">Shipped</span>;
       case "delivered":
@@ -186,7 +186,7 @@ function AdminOrdersContent() {
         {[
           { key: "all", label: "All Orders" },
           { key: "pending", label: `Pending (${stats.pending || 0})` },
-          { key: "in_production", label: `3D Printing (${stats.in_production || 0})` },
+          { key: "in_production", label: `Processing (${stats.in_production || 0})` },
           { key: "shipped", label: `Shipped (${stats.shipped || 0})` },
           { key: "delivered", label: `Delivered (${stats.delivered || 0})` },
         ].map((tab) => (
@@ -263,7 +263,7 @@ function AdminOrdersContent() {
                   >
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
-                    <option value="in_production">3D Printing</option>
+                    <option value="in_production">Processing</option>
                     <option value="shipped">Shipped</option>
                     <option value="delivered">Delivered</option>
                     <option value="cancelled">Cancelled</option>

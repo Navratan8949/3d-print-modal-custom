@@ -140,7 +140,7 @@ export default function AdminOrderDetailPage({ params }) {
       case "confirmed":
         return <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-blue-50 text-blue-800 border border-blue-200">Confirmed</span>;
       case "in_production":
-        return <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-200">3D Printing In Progress</span>;
+        return <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-200">Processing</span>;
       case "shipped":
         return <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">Shipped / Dispatched</span>;
       case "delivered":
@@ -156,7 +156,7 @@ export default function AdminOrderDetailPage({ params }) {
   const stages = [
     { key: "pending", label: "Received", icon: Clock },
     { key: "confirmed", label: "Confirmed", icon: ShieldCheck },
-    { key: "in_production", label: "3D Printing", icon: Package },
+    { key: "in_production", label: "Processing", icon: Package },
     { key: "shipped", label: "Shipped", icon: Truck },
     { key: "delivered", label: "Delivered", icon: CheckCircle },
   ];
@@ -282,7 +282,7 @@ export default function AdminOrderDetailPage({ params }) {
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-            3D Fabrication & Logistics Stage
+            Order Fulfillment & Logistics Stage
           </span>
           <div>{getStatusBadge(status)}</div>
         </div>
@@ -488,8 +488,8 @@ export default function AdminOrderDetailPage({ params }) {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
                 >
                   <option value="pending">Pending Review (Waiting confirmation)</option>
-                  <option value="confirmed">Confirmed (Scheduled for print)</option>
-                  <option value="in_production">3D Printing In Progress (Slicing/Resin)</option>
+                  <option value="confirmed">Confirmed (Order Confirmed)</option>
+                  <option value="in_production">Processing (In Production / Preparation)</option>
                   <option value="shipped">Shipped & In Transit</option>
                   <option value="delivered">Delivered Successfully</option>
                   <option value="cancelled">Cancelled</option>
