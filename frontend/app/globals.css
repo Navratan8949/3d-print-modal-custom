@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-warm-canvas: #FAF8F5;
+    --bg-warm-surface: #F4EFEB;
+    --bg-warm-card: #FFFFFF;
+    --text-primary: #1C1917;
+    --text-muted: #57534E;
+    --border-subtle: #E7E0D8;
+    --accent-amber: #D97706;
+    --accent-amber-dark: #B45309;
+    --accent-amber-light: #FDE68A;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background-color: #FAF8F5;
+    color: #1C1917;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    background-color: #FAF8F5;
+    color: #1C1917;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+/* Tabular numerals for prices and counts */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF8F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D6CEC5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B8ADA0;
+}
+
+/* Neo-brutalist & Marquee styles */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  animation: marquee 25s linear infinite;
+}
+
+.neo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #171717;
+  color: #ffffff;
+  border: 1px solid #171717;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.15s ease-in-out;
+}
+
+@media (hover: hover) {
+  .neo-button:hover {
+    color: #171717;
+    background-color: #ffffff;
+  }
+}
+
+.neo-button:active {
+  transform: scale(0.98);
+}
+
+.neo-card {
+  border: 1px solid #171717;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+}

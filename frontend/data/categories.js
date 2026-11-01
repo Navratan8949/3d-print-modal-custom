@@ -1,0 +1,66 @@
+export const CATEGORIES = [
+  {
+    id: "custom-3d-figurines",
+    slug: "custom-3d-figurines",
+    name: "Custom 3D Figurines",
+    shortDescription: "Turn your cherished photographs into sculpted miniature keepsakes.",
+    description: "Handcrafted 3D sculpted miniatures replicating your favorite memories, family portraits, couples, or beloved pets with exquisite detailing.",
+    itemCount: "7+ Creations",
+    tagline: "Your memories immortalized in three dimensions",
+    accentColor: "#D97706",
+  },
+  {
+    id: "3d-printed-idols",
+    slug: "3d-printed-idols",
+    name: "3D Printed Sacred Idols",
+    shortDescription: "Sacred devotional deity sculptures crafted with spiritual reverence.",
+    description: "Exquisite devotional idols featuring intricate spiritual iconography, pristine finishes, and sacred precision for home temples and sacred spaces.",
+    itemCount: "5+ Sacred Idols",
+    tagline: "Devotion and sacred art rendered in fine detail",
+    accentColor: "#D97706",
+  },
+  {
+    id: "home-decor",
+    slug: "decor",
+    name: "Home & Desk Decor",
+    shortDescription: "Contemporary clocks, sculptural vases, bouquets, and tabletop accents.",
+    description: "Modern architectural accents, ever-lasting sculpted floral arrangements, and statement decorative elements for discerning interiors.",
+    itemCount: "12+ Items",
+    tagline: "Artistic sculptural accents for modern spaces",
+    accentColor: "#92400E",
+  },
+  {
+    id: "models",
+    slug: "models",
+    name: "3D Collectibles & Models",
+    shortDescription: "Gaming masks, Marvel figures, and highly detailed display models.",
+    description: "High-precision collectible statues, articulated figures, and wearable accessories printed with fine layer height.",
+    itemCount: "10+ Models",
+    tagline: "Fine detail precision collectibles",
+    accentColor: "#D97706",
+  },
+  {
+    id: "planters-accessories",
+    slug: "planters-accessories",
+    name: "Planters & Desk Accessories",
+    shortDescription: "Faceted geometric planters and functional artisanal desk accessories.",
+    description: "Playful yet refined geometric planters, pen holders, and functional desk companions manufactured with eco-conscious 3D materials.",
+    itemCount: "6+ Accessories",
+    tagline: "Functional botanical and workspace aesthetics",
+    accentColor: "#D97706",
+  },
+  {
+    id: "personalized-name-models",
+    slug: "personalized-name-models",
+    name: "Personalized Name Models",
+    shortDescription: "Custom typography, desktop initials, and illuminated name art.",
+    description: "Bespoke 3D printed typography crafted for modern desks, bedside stands, corporate workstations, and celebratory gifts.",
+    itemCount: "Bespoke Custom",
+    tagline: "Expressive personalized typographic art",
+    accentColor: "#B45309",
+  },
+];
+
+export function getCategoryBySlug(slug) {
+  return CATEGORIES.find((cat) => cat.slug === slug || cat.id === slug);
+}
