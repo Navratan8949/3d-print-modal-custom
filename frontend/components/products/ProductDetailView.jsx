@@ -144,6 +144,13 @@ export default function ProductDetailView({ product }) {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  // Share Product Link on WhatsApp with Product Image preview
+  const handleShareOnWhatsApp = () => {
+    const currentUrl = typeof window !== "undefined" ? window.location.href : `https://prime3dworld.com/products/${product.slug}`;
+    const shareText = `Check out this custom 3D creation: *${product.name}* (₹${currentUnitPrice}) on Prime 3D World!\n\n${currentUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
+  };
+
   const handleCheckPincode = (e) => {
     e.preventDefault();
     if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
@@ -570,6 +577,19 @@ export default function ProductDetailView({ product }) {
               >
                 <MessageCircle className="w-4 h-4 fill-current transition-transform group-hover:scale-110" />
                 <span>Buy Now on WhatsApp</span>
+              </button>
+            </div>
+
+            {/* Share on WhatsApp Button with OG Product Image */}
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={handleShareOnWhatsApp}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                title="Share this product on WhatsApp"
+              >
+                <Share2 className="w-3.5 h-3.5 text-stone-500" />
+                <span>Share Link on WhatsApp</span>
               </button>
             </div>
 

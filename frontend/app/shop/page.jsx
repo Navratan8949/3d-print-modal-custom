@@ -15,18 +15,26 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [productsList, setProductsList] = useState(PRODUCTS);
+  const [productsList, setProductsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
         if (res && res.products && res.products.length > 0) {
           setProductsList(res.products);
+        } else {
+          setProductsList(PRODUCTS);
         }
       })
       .catch((err) => {
-        console.warn("Using offline products catalog:", err.message);
+        console.warn("Using fallback products catalog:", err.message);
+        setProductsList(PRODUCTS);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 
@@ -186,13 +194,35 @@ function ShopContent() {
         <span>
           Showing{" "}
           <strong className="text-stone-900">{filteredProducts.length}</strong> of{" "}
-          {PRODUCTS.length} 3D creations
+          {productsList.length} 3D creations
         </span>
         {isFiltered && <span>Active filters applied</span>}
       </div>
 
-      {/* Products Grid */}
-      <ProductGrid products={filteredProducts} />
+      {/* Products Grid or Skeleton Loading (Zero Layout Shift) */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-white border border-stone-200/90 overflow-hidden animate-pulse shadow-2xs"
+            >
+              <div className="aspect-4/3 w-full bg-stone-200" />
+              <div className="p-4 sm:p-5 space-y-3">
+                <div className="h-3 w-20 bg-stone-200 rounded" />
+                <div className="h-5 w-4/5 bg-stone-200 rounded" />
+                <div className="h-3 w-full bg-stone-100 rounded" />
+                <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
+                  <div className="h-5 w-16 bg-stone-200 rounded" />
+                  <div className="h-8 w-24 bg-stone-200 rounded-lg" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ProductGrid products={filteredProducts} />
+      )}
     </div>
   );
 }

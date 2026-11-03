@@ -1,25 +1,40 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Search, X, ArrowRight, Sparkles } from "lucide-react";
 import { PRODUCTS } from "@/data/products";
+import { productsAPI } from "@/lib/api";
 import ProductVisual from "@/components/products/ProductVisual";
 
 export default function SearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState("");
+  const [allProducts, setAllProducts] = useState(PRODUCTS);
+
+  useEffect(() => {
+    if (isOpen) {
+      productsAPI
+        .getAll({ limit: 100 })
+        .then((res) => {
+          if (res && res.products && res.products.length > 0) {
+            setAllProducts(res.products);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   const filteredProducts = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return PRODUCTS.filter(
+    return allProducts.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
-        p.shortDescription.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
+        (p.shortDescription && p.shortDescription.toLowerCase().includes(q)) ||
+        (p.tags && p.tags.some((t) => t.toLowerCase().includes(q)))
     );
-  }, [query]);
+  }, [query, allProducts]);
 
   if (!isOpen) return null;
 

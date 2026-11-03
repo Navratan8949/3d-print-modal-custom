@@ -43,9 +43,46 @@ export async function generateMetadata({ params }) {
     };
   }
 
+  const rawImage =
+    product.image_url ||
+    (product.images && product.images[0]) ||
+    "/images/products/fullbody-figurine-hero.jpeg";
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://prime3dworld.com";
+  const absoluteImageUrl = rawImage.startsWith("http")
+    ? rawImage
+    : `${siteUrl.replace(/\/$/, "")}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
+
+  const pageTitle = `${product.name} (₹${product.price}) – Prime 3D World`;
+  const pageDescription =
+    product.shortDescription ||
+    (product.description ? product.description.slice(0, 160) : "") ||
+    "Custom 3D printed creation sculpted with precision. Order directly on WhatsApp.";
+
   return {
-    title: `${product.name} (ID: #${product.id}) – Prime3Dworld 3D Printing`,
-    description: product.shortDescription,
+    title: pageTitle,
+    description: pageDescription,
+    openGraph: {
+      title: pageTitle,
+      description: pageDescription,
+      url: `${siteUrl}/products/${product.slug}`,
+      siteName: "Prime 3D World",
+      images: [
+        {
+          url: absoluteImageUrl,
+          width: 1200,
+          height: 630,
+          alt: product.name,
+        },
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: pageTitle,
+      description: pageDescription,
+      images: [absoluteImageUrl],
+    },
   };
 }
 

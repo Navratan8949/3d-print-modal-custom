@@ -306,18 +306,23 @@ exports.updateOrderStatus = async (req, res) => {
     if (paymentStatus) order.paymentStatus = paymentStatus;
     if (adminNotes !== undefined) order.adminNotes = adminNotes;
 
-    if (courierName || trackingNumber || trackingUrl) {
+    const trackingObj = req.body.tracking || {};
+    const effectiveCourier = courierName !== undefined ? courierName : trackingObj.courierName;
+    const effectiveTrackingNum = trackingNumber !== undefined ? trackingNumber : trackingObj.trackingNumber;
+    const effectiveTrackingUrl = trackingUrl !== undefined ? trackingUrl : trackingObj.trackingUrl;
+
+    if (effectiveCourier || effectiveTrackingNum || effectiveTrackingUrl) {
       order.tracking = {
-        courierName: courierName !== undefined ? courierName : order.tracking.courierName,
-        trackingNumber: trackingNumber !== undefined ? trackingNumber : order.tracking.trackingNumber,
-        trackingUrl: trackingUrl !== undefined ? trackingUrl : order.tracking.trackingUrl,
+        courierName: effectiveCourier !== undefined ? effectiveCourier : (order.tracking?.courierName || ""),
+        trackingNumber: effectiveTrackingNum !== undefined ? effectiveTrackingNum : (order.tracking?.trackingNumber || ""),
+        trackingUrl: effectiveTrackingUrl !== undefined ? effectiveTrackingUrl : (order.tracking?.trackingUrl || ""),
       };
     }
 
     await order.save();
 
     // Send email notification to customer in background if status changed or tracking updated
-    if ((status && status !== prevStatus) || courierName || trackingNumber) {
+    if ((status && status !== prevStatus) || effectiveCourier || effectiveTrackingNum) {
       sendInBackground(async () => {
         await sendOrderStatusEmail(order);
       }, `Order #${order.orderNumber} status/tracking update`);
