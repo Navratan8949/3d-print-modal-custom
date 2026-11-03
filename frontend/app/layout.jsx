@@ -10,6 +10,7 @@ export const viewport = {
 };
 
 export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://prime3dworld.com"),
   title: "Prime3Dworld – Premium 3D Printing E-Commerce",
   description:
     "Discover bespoke 3D printed figurines, personalized name models, sacred devotional idols, and creative home decor crafted just for you.",

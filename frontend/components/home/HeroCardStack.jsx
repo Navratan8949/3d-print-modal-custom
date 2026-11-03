@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, useMotionValue } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from "lucide-react";
 
 export const HERO_PRODUCTS = [
   {
     id: 1,
+    slug: "custom-3d-miniature",
     name: "Custom 3D Figurine from Photo",
     category: "Personalized",
     price: "From ₹1,499",
@@ -16,6 +19,7 @@ export const HERO_PRODUCTS = [
   },
   {
     id: 2,
+    slug: "khatu-shyam-ji-idol",
     name: "Khatu Shyam Ji 3D Sacred Idol",
     category: "Temple Idol",
     price: "₹899",
@@ -24,6 +28,7 @@ export const HERO_PRODUCTS = [
   },
   {
     id: 3,
+    slug: "3d-flower-bouquet",
     name: "Everlasting 3D Flower Bouquet",
     category: "Floral Decor",
     price: "₹649",
@@ -32,6 +37,7 @@ export const HERO_PRODUCTS = [
   },
   {
     id: 4,
+    slug: "kanha-ji-idol",
     name: "Kanha Ji 3D Divine Idol",
     category: "Temple Idol",
     price: "₹799",
@@ -40,6 +46,7 @@ export const HERO_PRODUCTS = [
   },
   {
     id: 5,
+    slug: "cat-pen-stand",
     name: "Geometric Cat Pen Stand",
     category: "Desk Decor",
     price: "₹399",
@@ -48,6 +55,7 @@ export const HERO_PRODUCTS = [
   },
   {
     id: 6,
+    slug: "muscular-pen-stand",
     name: "Gym Muscular 3D Pen Stand",
     category: "Desk Accessories",
     price: "₹499",
@@ -56,6 +64,7 @@ export const HERO_PRODUCTS = [
   },
   {
     id: 7,
+    slug: "custom-3d-miniature",
     name: "Custom 3D Miniature Model",
     category: "Personalized",
     price: "From ₹1,199",
@@ -67,8 +76,10 @@ export const HERO_PRODUCTS = [
 const ROTATIONS = [-4, 3.5, -2.5, 2];
 
 function StackCard({ product, index, total, onSendToBack }) {
+  const router = useRouter();
   const x = useMotionValue(0);
   const isFront = index === total - 1;
+  const isDraggingRef = useRef(false);
 
   const handleAction = useCallback(() => {
     if (isFront) {
@@ -77,12 +88,18 @@ function StackCard({ product, index, total, onSendToBack }) {
     }
   }, [isFront, onSendToBack, product.id, x]);
 
+  const handleCardClick = (e) => {
+    if (!isFront) return;
+    if (isDraggingRef.current) return;
+    router.push(`/products/${product.slug || product.id}`);
+  };
+
   const depth = total - 1 - index;
 
   return (
     <motion.div
       className={`absolute inset-0 will-change-transform transform-gpu ${
-        isFront ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
+        isFront ? "cursor-pointer" : "pointer-events-none"
       }`}
       style={{
         x,
@@ -91,14 +108,20 @@ function StackCard({ product, index, total, onSendToBack }) {
       drag={isFront ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.45}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
       onDragEnd={(_, info) => {
+        setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 150);
         if (Math.abs(info.offset.x) > 60 || Math.abs(info.velocity.x) > 400) {
           handleAction();
         } else {
           x.set(0);
         }
       }}
-      onClick={handleAction}
+      onClick={handleCardClick}
       animate={{
         rotateZ: ROTATIONS[index % ROTATIONS.length],
         scale: 1 - depth * 0.04,
@@ -124,7 +147,17 @@ function StackCard({ product, index, total, onSendToBack }) {
         </div>
 
         {/* Card Main Image */}
-        <div className="relative w-full flex-1 bg-stone-100 overflow-hidden">
+        <Link
+          href={`/products/${product.slug || product.id}`}
+          onClick={(e) => {
+            if (!isFront) e.preventDefault();
+            e.stopPropagation();
+          }}
+          className={`relative w-full flex-1 bg-stone-100 overflow-hidden block ${
+            isFront ? "cursor-pointer" : ""
+          }`}
+          title={`View details for ${product.name}`}
+        >
           <Image
             src={product.imageUrl}
             alt={product.name}
@@ -132,24 +165,41 @@ function StackCard({ product, index, total, onSendToBack }) {
             priority={isFront}
             loading={isFront ? "eager" : "lazy"}
             sizes="(max-width: 640px) 300px, 370px"
-            className="object-cover pointer-events-none"
+            className="object-cover pointer-events-none transition-transform duration-500 hover:scale-105"
             draggable={false}
           />
-        </div>
+        </Link>
 
         {/* Card Bottom Meta Bar */}
-        <div className="h-13 border-t border-stone-200 bg-white px-3.5 flex items-center justify-between gap-3 shrink-0">
-          <div className="min-w-0">
+        <div className="h-14 border-t border-stone-200 bg-white px-3.5 flex items-center justify-between gap-3 shrink-0">
+          <Link
+            href={`/products/${product.slug || product.id}`}
+            onClick={(e) => {
+              if (!isFront) e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="min-w-0 flex-1 hover:opacity-80 transition-opacity"
+          >
             <h3 className="font-bold text-xs sm:text-sm text-stone-900 truncate">
               {product.name}
             </h3>
             <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
               {product.category}
             </span>
-          </div>
-          <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 shrink-0">
-            View Details →
-          </span>
+          </Link>
+
+          <Link
+            href={`/products/${product.slug || product.id}`}
+            onClick={(e) => {
+              if (!isFront) e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 px-3 py-1.5 rounded-lg border border-amber-200/90 shrink-0 transition-colors z-20 cursor-pointer shadow-2xs active:scale-95"
+            aria-label={`View full details of ${product.name}`}
+          >
+            <span>View Details</span>
+            <span>→</span>
+          </Link>
         </div>
       </div>
     </motion.div>
@@ -207,7 +257,7 @@ export default function HeroCardStack({ products = HERO_PRODUCTS }) {
 
   if (!mounted || items.length === 0) {
     return (
-      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] aspect-[3/4] max-h-[460px] flex items-center justify-center bg-stone-100 rounded-2xl">
+      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] h-[420px] xs:h-[450px] sm:h-[480px] flex items-center justify-center bg-stone-100/80 rounded-2xl border border-stone-200">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-amber-600 rounded-full animate-spin" />
       </div>
     );
@@ -223,7 +273,7 @@ export default function HeroCardStack({ products = HERO_PRODUCTS }) {
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* 3D Card Stack Stage with Left and Right Chevrons */}
-      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] aspect-[3/4] max-h-[470px]">
+      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] h-[420px] xs:h-[450px] sm:h-[480px]">
         {visibleCards.map(({ prod, idx }) => (
           <StackCard
             key={prod.id}

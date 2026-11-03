@@ -16,27 +16,54 @@ export default function Hero() {
           {/* Left Column: Editorial Copy, CTAs & Proof */}
           <div className="lg:col-span-7 space-y-7 lg:pr-6">
             {/* Live Eyebrow Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3.5 py-1.5 border border-amber-500/25 text-xs font-semibold text-amber-800">
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3.5 py-1.5 border border-amber-500/25 text-xs font-semibold text-amber-900">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600" />
               </span>
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Bespoke 3D Printing Lab & Artisanal Studio</span>
+              <span>Welcome to Prime 3D World — where creativity meets technology! 🖨️✨</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[68px] font-serif font-bold tracking-tight text-stone-900 leading-[1.08] [text-wrap:balance]">
-              Your Imagination,{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 via-orange-600 to-amber-800">
-                Beautifully Brought to Life.
+            <h1 className="text-3xl sm:text-5xl lg:text-5xl xl:text-6xl font-serif font-bold tracking-tight text-stone-900 leading-[1.12] [text-wrap:balance]">
+              🚀 Turning Your Ideas Into Reality —{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 via-orange-600 to-blue-700">
+                One Layer at a Time! 🧡💙
               </span>
             </h1>
 
             {/* Subheading */}
-            <p className="text-base sm:text-lg text-stone-600 max-w-xl leading-relaxed [text-wrap:balance]">
-              Discover custom 3D printed figurines sculpted from your photos, thoughtful personalized gifts, sacred temple idols, and modern home decor crafted with fine-layer precision.
+            <p className="text-sm sm:text-base text-stone-600 max-w-xl leading-relaxed [text-wrap:balance]">
+              From custom 3D prints &amp; personalized names to 3D miniature couples, unique gifts, toys, models &amp; décor, we bring your imagination to life.
             </p>
+
+            {/* 6 Key Highlights Badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200/80 shadow-2xs text-xs font-semibold text-stone-800">
+                <span className="text-base">🎨</span>
+                <span className="truncate">Custom Designs</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200/80 shadow-2xs text-xs font-semibold text-stone-800">
+                <span className="text-base">🖨️</span>
+                <span className="truncate">High-Quality Prints</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200/80 shadow-2xs text-xs font-semibold text-stone-800">
+                <span className="text-base">💝</span>
+                <span className="truncate">Personalized Gifts</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200/80 shadow-2xs text-xs font-semibold text-stone-800">
+                <span className="text-base">👫</span>
+                <span className="truncate">Miniature Couples</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200/80 shadow-2xs text-xs font-semibold text-stone-800">
+                <span className="text-base">🏡</span>
+                <span className="truncate">Stylish Décor</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200/80 shadow-2xs text-xs font-semibold text-stone-800">
+                <span className="text-base">🎁</span>
+                <span className="truncate">Every Occasion</span>
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">

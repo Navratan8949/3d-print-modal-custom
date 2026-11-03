@@ -49,11 +49,11 @@ export default function Header() {
   return (
     <>
       <header
-        className={`sticky top-0 z-40 w-full transition-all duration-300 ${
+        className={`sticky top-0 z-40 w-full transition-colors duration-200 ${
           isScrolled
-            ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-xs border-b border-stone-200/80 py-3"
-            : "bg-[#FAF8F5] border-b border-stone-200/50 py-4"
-        }`}
+            ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-xs border-b border-stone-200/80"
+            : "bg-[#FAF8F5] border-b border-stone-200/50"
+        } h-16 sm:h-20 flex items-center`}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
