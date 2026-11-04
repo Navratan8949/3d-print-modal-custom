@@ -20,8 +20,10 @@ export default function ProductCard({ product }) {
   const handleWhatsAppQuickInquiry = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    const productUrl = `https://www.prime3dworld.in/products/${product.slug || product.id}`;
     const url = createProductWhatsAppUrl({
       productName: product.name,
+      productUrl,
       quantity: 1,
       customizationDetails: {
         ProductID: `#${product.id}`,

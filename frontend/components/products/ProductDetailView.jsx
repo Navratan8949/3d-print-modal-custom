@@ -139,8 +139,11 @@ export default function ProductDetailView({ product }) {
       TotalAmount: `₹${currentUnitPrice * quantity}`,
     };
 
+    const productUrl = `https://www.prime3dworld.in/products/${product.slug}`;
+
     const url = createProductWhatsAppUrl({
       productName: product.name,
+      productUrl,
       quantity,
       customizationDetails: details,
       hasPhotoUpload: uploadedPhotos.length > 0 || product.customizationType === "figurine",
@@ -151,11 +154,8 @@ export default function ProductDetailView({ product }) {
 
   // Share Product Link on WhatsApp with Product Image preview
   const handleShareOnWhatsApp = () => {
-    const currentUrl =
-      typeof window !== "undefined"
-        ? window.location.href
-        : `https://www.prime3dworld.in/products/${product.slug}`;
-    const shareText = `Check out this custom 3D creation: *${product.name}* (₹${currentUnitPrice}) on Prime 3D World!\n\n${currentUrl}`;
+    const publicUrl = `https://www.prime3dworld.in/products/${product.slug}`;
+    const shareText = `Check out this custom 3D creation: *${product.name}* (₹${currentUnitPrice}) on Prime 3D World!\n\n${publicUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
   };
 
