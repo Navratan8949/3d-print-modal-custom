@@ -1,5 +1,6 @@
 import Hero from "@/components/home/Hero";
 import FeaturedCategories from "@/components/home/FeaturedCategories";
+import FeaturedProducts from "@/components/home/FeaturedProducts";
 import HowItWorks from "@/components/home/HowItWorks";
 import FinalCTA from "@/components/home/FinalCTA";
 
@@ -17,6 +18,9 @@ export default function HomePage() {
 
       {/* Explore Catalog Categories */}
       <FeaturedCategories />
+
+      {/* Trending & Best-Selling 3D Products */}
+      <FeaturedProducts />
 
       {/* How It Works - 4 Step Ordering Flow */}
       <HowItWorks />

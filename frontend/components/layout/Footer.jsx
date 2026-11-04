@@ -123,10 +123,23 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500 text-center sm:text-left">
+        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-stone-500 text-center md:text-left">
           <div>
             © {new Date().getFullYear()} Prime3Dworld. All rights reserved.
           </div>
+
+          <div>
+            Design &amp; Developed by{" "}
+            <a
+              href="https://www.codepecharcha.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-amber-500 hover:text-amber-400 transition-colors underline underline-offset-2"
+            >
+              Code Pe Charcha
+            </a>
+          </div>
+
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             <Link href="/shop" className="hover:text-stone-400 transition-colors">
               Catalog
