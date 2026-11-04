@@ -163,6 +163,10 @@ export const productsAPI = {
   toggleFeatured: async (id) => {
     return request(`/products/${id}/toggle-featured`, { method: "PATCH" });
   },
+
+  toggleSlider: async (id) => {
+    return request(`/products/${id}/toggle-slider`, { method: "PATCH" });
+  },
 };
 
 // ==========================================

@@ -108,6 +108,11 @@ const productSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    showInSlider: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     isCustomizable: {
       type: Boolean,
       default: true,

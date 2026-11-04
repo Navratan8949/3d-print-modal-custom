@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createProductWhatsAppUrl } from "@/lib/whatsapp";
-import { PRODUCTS } from "@/data/products";
 
 export default function ProductDetailView({ product }) {
   const { addToCart, setIsDrawerOpen } = useCart();
@@ -56,11 +55,6 @@ export default function ProductDetailView({ product }) {
   const handleNextImage = () => {
     setSelectedImageIndex((prev) => (prev + 1) % images.length);
   };
-
-  // Previous & Next product for top navigation
-  const currentProdIndex = PRODUCTS.findIndex((p) => String(p.id) === String(product.id));
-  const prevProduct = currentProdIndex > 0 ? PRODUCTS[currentProdIndex - 1] : PRODUCTS[PRODUCTS.length - 1];
-  const nextProduct = currentProdIndex < PRODUCTS.length - 1 ? PRODUCTS[currentProdIndex + 1] : PRODUCTS[0];
 
   // Variations & Options
   const sizeOptions = product.availableOptions?.sizes || ["Standard Scale (12-15 cm)", "Large Display (18-20 cm)"];
@@ -184,31 +178,19 @@ export default function ProductDetailView({ product }) {
           </span>
         </div>
 
-        {/* Product Navigation Chevrons */}
+        {/* Product Navigation */}
         <div className="flex items-center gap-2 shrink-0">
           <span className="bg-stone-100 text-stone-700 font-bold px-2.5 py-1 rounded-md text-[11px] tabular-nums">
             Item ID: #{product.id}
           </span>
 
-          <div className="flex items-center border border-stone-200 rounded-lg p-0.5 bg-white shadow-2xs">
-            <Link
-              href={`/products/${prevProduct.slug}`}
-              className="px-2 py-1 hover:bg-stone-100 rounded text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1 text-[11px] font-semibold"
-              title={`Previous: ${prevProduct.name}`}
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Prev</span>
-            </Link>
-            <span className="w-px h-3 bg-stone-200" />
-            <Link
-              href={`/products/${nextProduct.slug}`}
-              className="px-2 py-1 hover:bg-stone-100 rounded text-stone-600 hover:text-stone-900 transition-colors flex items-center gap-1 text-[11px] font-semibold"
-              title={`Next: ${nextProduct.name}`}
-            >
-              <span>Next</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+          <Link
+            href="/shop"
+            className="px-2.5 py-1 hover:bg-stone-100 rounded-lg text-stone-600 hover:text-stone-900 border border-stone-200 transition-colors flex items-center gap-1 text-[11px] font-semibold bg-white shadow-2xs"
+          >
+            <span>All Creations</span>
+            <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+          </Link>
         </div>
       </div>
 

@@ -6,72 +6,17 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, useMotionValue } from "framer-motion";
 import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from "lucide-react";
+import { productsAPI } from "@/lib/api";
 
-export const HERO_PRODUCTS = [
-  {
-    id: 1,
-    slug: "custom-3d-miniature",
-    name: "Custom 3D Figurine from Photo",
-    category: "Personalized",
-    price: "From ₹1,499",
-    tag: "Most Popular",
-    imageUrl: "/images/products/fullbody-figurine-hero.jpeg",
-  },
-  {
-    id: 2,
-    slug: "khatu-shyam-ji-idol",
-    name: "Khatu Shyam Ji 3D Sacred Idol",
-    category: "Temple Idol",
-    price: "₹899",
-    tag: "Sacred Devotional",
-    imageUrl: "/images/products/khatu-shyam-faith.jpeg",
-  },
-  {
-    id: 3,
-    slug: "3d-flower-bouquet",
-    name: "Everlasting 3D Flower Bouquet",
-    category: "Floral Decor",
-    price: "₹649",
-    tag: "Home & Gift",
-    imageUrl: "/images/products/flower-bouquet.jpeg",
-  },
-  {
-    id: 4,
-    slug: "kanha-ji-idol",
-    name: "Kanha Ji 3D Divine Idol",
-    category: "Temple Idol",
-    price: "₹799",
-    tag: "Sacred Devotional",
-    imageUrl: "/images/products/kanha-ji-idol.jpeg",
-  },
-  {
-    id: 5,
-    slug: "cat-pen-stand",
-    name: "Geometric Cat Pen Stand",
-    category: "Desk Decor",
-    price: "₹399",
-    tag: "Desk Essential",
-    imageUrl: "/images/products/cat-pen-stand.jpeg",
-  },
-  {
-    id: 6,
-    slug: "muscular-pen-stand",
-    name: "Gym Muscular 3D Pen Stand",
-    category: "Desk Accessories",
-    price: "₹499",
-    tag: "Fitness Accent",
-    imageUrl: "/images/products/muscular-pen-stand.jpeg",
-  },
-  {
-    id: 7,
-    slug: "custom-3d-miniature",
-    name: "Custom 3D Miniature Model",
-    category: "Personalized",
-    price: "From ₹1,199",
-    tag: "Bespoke Gift",
-    imageUrl: "/images/products/miniature-male.jpeg",
-  },
-];
+const formatCardProduct = (p) => ({
+  id: p.id || p._id,
+  slug: p.slug || String(p.id),
+  name: p.name,
+  category: p.category,
+  price: typeof p.price === "number" ? `₹${p.price}` : p.price || "₹999",
+  tag: p.showInSlider ? "Featured in Slider" : p.is_featured ? "Featured 3D" : p.category || "3D Creation",
+  imageUrl: p.image_url || p.images?.[0] || "/images/products/fullbody-figurine-hero.jpeg",
+});
 
 const ROTATIONS = [-4, 3.5, -2.5, 2];
 
@@ -206,13 +151,39 @@ function StackCard({ product, index, total, onSendToBack }) {
   );
 }
 
-export default function HeroCardStack({ products = HERO_PRODUCTS }) {
-  const [items, setItems] = useState(products);
+export default function HeroCardStack({ initialProducts = [] }) {
+  const [items, setItems] = useState(() =>
+    Array.isArray(initialProducts) && initialProducts.length > 0
+      ? initialProducts.map(formatCardProduct)
+      : []
+  );
   const [isPaused, setIsPaused] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    productsAPI
+      .getAll({ slider: "true", limit: 12 })
+      .then((res) => {
+        if (res && res.products && res.products.length > 0) {
+          setItems(res.products.map(formatCardProduct));
+        } else {
+          return productsAPI.getAll({ featured: "true", limit: 8 }).then((fallbackRes) => {
+            if (fallbackRes && fallbackRes.products && fallbackRes.products.length > 0) {
+              setItems(fallbackRes.products.map(formatCardProduct));
+            } else {
+              return productsAPI.getAll({ limit: 8 }).then((allRes) => {
+                if (allRes && allRes.products && allRes.products.length > 0) {
+                  setItems(allRes.products.map(formatCardProduct));
+                }
+              });
+            }
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load dynamic hero products:", err.message);
+      });
   }, []);
 
   const sendToBack = useCallback((id) => {

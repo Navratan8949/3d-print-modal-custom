@@ -47,6 +47,7 @@ export default function AdminProductDetailPage({ params }) {
     shortDescription: "",
     description: "",
     is_featured: false,
+    showInSlider: false,
     isCustomizable: true,
     currentStock: 100,
     status: "active",
@@ -78,6 +79,7 @@ export default function AdminProductDetailPage({ params }) {
           shortDescription: p.shortDescription || "",
           description: p.description || "",
           is_featured: Boolean(p.is_featured),
+          showInSlider: Boolean(p.showInSlider),
           isCustomizable: p.isCustomizable !== false,
           currentStock: p.currentStock || 100,
           status: p.status || "active",
@@ -127,6 +129,7 @@ export default function AdminProductDetailPage({ params }) {
       formData.append("shortDescription", form.shortDescription);
       formData.append("description", form.description);
       formData.append("is_featured", form.is_featured);
+      formData.append("showInSlider", form.showInSlider);
       formData.append("isCustomizable", form.isCustomizable);
       formData.append("currentStock", form.currentStock || 100);
       formData.append("status", form.status);
@@ -408,7 +411,19 @@ export default function AdminProductDetailPage({ params }) {
                   onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
                   className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
-                <span>Feature on Homepage Hero & Trends</span>
+                <span>Feature on Homepage Trends</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-800">
+                <input
+                  type="checkbox"
+                  checked={form.showInSlider}
+                  onChange={(e) => setForm({ ...form, showInSlider: e.target.checked })}
+                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                />
+                <span className="font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  Show in Slide (Hero 3D Slider)
+                </span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-800">

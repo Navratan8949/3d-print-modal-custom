@@ -7,6 +7,7 @@ const {
   updateProduct,
   deleteProduct,
   toggleFeatured,
+  toggleShowInSlider,
 } = require("../controllers/productController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
@@ -48,6 +49,13 @@ router.patch(
   authMiddleware,
   roleMiddleware("admin", "super_admin"),
   toggleFeatured
+);
+
+router.patch(
+  "/:id/toggle-slider",
+  authMiddleware,
+  roleMiddleware("admin", "super_admin"),
+  toggleShowInSlider
 );
 
 module.exports = router;

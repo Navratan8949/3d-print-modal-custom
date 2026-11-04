@@ -3,20 +3,19 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Search, X, ArrowRight, Sparkles } from "lucide-react";
-import { PRODUCTS } from "@/data/products";
 import { productsAPI } from "@/lib/api";
 import ProductVisual from "@/components/products/ProductVisual";
 
 export default function SearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState("");
-  const [allProducts, setAllProducts] = useState(PRODUCTS);
+  const [allProducts, setAllProducts] = useState([]);
 
   useEffect(() => {
     if (isOpen) {
       productsAPI
         .getAll({ limit: 100 })
         .then((res) => {
-          if (res && res.products && res.products.length > 0) {
+          if (res && res.products) {
             setAllProducts(res.products);
           }
         })
