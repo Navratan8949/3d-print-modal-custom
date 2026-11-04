@@ -17,7 +17,12 @@ export default function CartItem({ item, onUpdateQuantity, onRemove, onClose }) 
         onClick={onClose}
         className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-stone-100 group"
       >
-        <ProductVisual imageKey={item.imageKey} alt={item.name} aspectRatio="1/1" />
+        <ProductVisual
+          src={item.image || item.image_url}
+          imageKey={item.imageKey}
+          alt={item.name}
+          aspectRatio="1/1"
+        />
       </Link>
 
       {/* Item Details */}

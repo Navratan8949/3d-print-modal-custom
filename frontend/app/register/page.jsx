@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { User, Mail, Phone, Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/shop";
+
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
@@ -46,7 +49,7 @@ export default function RegisterPage() {
         phone: formData.phone,
         password: formData.password,
       });
-      router.push("/shop");
+      router.push(redirect);
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -59,11 +62,11 @@ export default function RegisterPage() {
       <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-sm p-5 sm:p-8 space-y-5 sm:space-y-6">
         <div className="text-center space-y-2">
           <span className="inline-block px-3 py-1 text-[11px] font-bold tracking-widest uppercase bg-amber-50 text-amber-800 rounded-full">
-            Create Account
+            Join Prime 3D World
           </span>
-          <h1 className="text-2xl font-serif font-bold text-stone-900">Join Prime 3D Lab</h1>
+          <h1 className="text-2xl font-serif font-bold text-stone-900">Create an Account</h1>
           <p className="text-xs text-stone-600">
-            Create your account to order bespoke 3D models and track fabrication.
+            Sign up to track fabrication stages, save shipping addresses, and review past orders.
           </p>
         </div>
 
@@ -76,7 +79,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-stone-700">Full Name *</label>
+            <label className="text-xs font-semibold text-stone-700">Full Name</label>
             <div className="relative">
               <input
                 type="text"
@@ -91,7 +94,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-stone-700">Email Address *</label>
+            <label className="text-xs font-semibold text-stone-700">Email Address</label>
             <div className="relative">
               <input
                 type="email"
@@ -106,13 +109,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-stone-700">Mobile / WhatsApp Number</label>
+            <label className="text-xs font-semibold text-stone-700">Phone / WhatsApp Number</label>
             <div className="relative">
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="10-digit mobile number"
+                placeholder="+91 98765 43210"
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-hidden focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 transition-all"
               />
               <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
@@ -120,14 +123,14 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-stone-700">Password *</label>
+            <label className="text-xs font-semibold text-stone-700">Password</label>
             <div className="relative">
               <input
                 type="password"
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="At least 6 characters"
+                placeholder="Minimum 6 characters"
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-hidden focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 transition-all"
               />
               <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
@@ -135,7 +138,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-stone-700">Confirm Password *</label>
+            <label className="text-xs font-semibold text-stone-700">Confirm Password</label>
             <div className="relative">
               <input
                 type="password"
@@ -171,7 +174,10 @@ export default function RegisterPage() {
         <div className="pt-4 border-t border-stone-100 text-center">
           <p className="text-xs text-stone-600">
             Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-amber-700 hover:text-amber-800">
+            <Link
+              href={`/login${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}
+              className="font-semibold text-amber-700 hover:text-amber-800"
+            >
               Sign In
             </Link>
           </p>
@@ -181,3 +187,16 @@ export default function RegisterPage() {
   );
 }
 
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-24 text-center">
+          <div className="w-8 h-8 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
+  );
+}

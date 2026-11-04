@@ -22,8 +22,10 @@ import {
   MapPin,
   FileText,
   Trash2,
+  Camera,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
+import { getOrderItemImage } from "@/lib/orderImages";
 
 function AdminOrdersContent() {
   const searchParams = useSearchParams();
@@ -341,17 +343,33 @@ function AdminOrdersContent() {
                 <div className="md:col-span-6 space-y-2.5">
                   {ord.items?.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 text-xs">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-12 h-12 object-cover rounded-lg border border-stone-200 bg-stone-100 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
-                          3D
-                        </div>
-                      )}
+                      {(() => {
+                        const itemImg = getOrderItemImage(item);
+                        return (
+                          <div className="relative shrink-0">
+                            <img
+                              src={itemImg}
+                              alt={item.name}
+                              className="w-12 h-12 object-cover rounded-lg border border-stone-200 bg-stone-100 shadow-2xs"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                              }}
+                            />
+                            {item.referencePhotoUrl && (
+                              <a
+                                href={item.referencePhotoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-0.5 shadow-xs"
+                                title="View Customer Reference Photo"
+                              >
+                                <Camera className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-stone-900 truncate">{item.name}</div>
                         <div className="text-[11px] text-stone-500">

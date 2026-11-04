@@ -27,8 +27,10 @@ import {
   FileText,
   ShieldCheck,
   Sparkles,
+  Camera,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
+import { getOrderItemImage } from "@/lib/orderImages";
 
 export default function AdminOrderDetailPage({ params }) {
   const router = useRouter();
@@ -366,18 +368,33 @@ export default function AdminOrderDetailPage({ params }) {
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
                       {/* Product Image */}
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-20 h-20 object-cover rounded-2xl border border-stone-200 bg-stone-100 shrink-0 shadow-2xs"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex flex-col items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                          <Package className="w-6 h-6 mb-1 text-amber-600" />
-                          <span>3D</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const itemImg = getOrderItemImage(item);
+                        return (
+                          <div className="relative shrink-0">
+                            <img
+                              src={itemImg}
+                              alt={item.name}
+                              className="w-20 h-20 object-cover rounded-2xl border border-stone-200 bg-stone-100 shadow-2xs"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                              }}
+                            />
+                            {item.referencePhotoUrl && (
+                              <a
+                                href={item.referencePhotoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700 transition-colors"
+                                title="View Customer Reference Photo"
+                              >
+                                <Camera className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">

@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+const Product = require("../models/Product");
 const { sendOrderEmails, sendOrderStatusEmail, sendInBackground } = require("../utils/sendMail");
 
 const WHATSAPP_PHONE = process.env.WHATSAPP_PHONE || "916376145171";
@@ -109,18 +110,46 @@ exports.createOrder = async (req, res) => {
         pincode: customer.pincode.trim(),
         notes: customer.notes ? customer.notes.trim() : "",
       },
-      items: parsedItems.map((i) => ({
-        product: i.product || i._id || null,
-        productId: i.id || i.sku || "",
-        name: i.name,
-        slug: i.slug || "",
-        price: Number(i.price),
-        quantity: Number(i.quantity) || 1,
-        image: i.image || i.image_url || "",
-        customization: i.customization || {},
-        hasPhoto: Boolean(i.hasPhoto || i.referencePhotoUrl),
-        referencePhotoUrl: i.referencePhotoUrl || null,
-      })),
+      items: await Promise.all(
+        parsedItems.map(async (i) => {
+          let img = i.image || i.image_url || "";
+          let prodId = i.id || i.sku || i.productId || "";
+          let slug = i.slug || "";
+
+          if (!img) {
+            const matchQueries = [];
+            if (slug) matchQueries.push({ slug });
+            if (prodId && !isNaN(Number(prodId))) matchQueries.push({ id: Number(prodId) });
+            if (i.name) matchQueries.push({ name: i.name });
+
+            if (matchQueries.length > 0) {
+              const matchedProd = await Product.findOne({ $or: matchQueries });
+              if (matchedProd) {
+                img = matchedProd.image_url || (matchedProd.images && matchedProd.images[0]) || "";
+                if (!slug) slug = matchedProd.slug || "";
+                if (!prodId) prodId = matchedProd.id || matchedProd.sku || "";
+              }
+            }
+          }
+
+          if (!img) {
+            img = "/images/products/fullbody-figurine-hero.jpeg";
+          }
+
+          return {
+            product: i.product || i._id || null,
+            productId: String(prodId),
+            name: i.name,
+            slug,
+            price: Number(i.price) || 0,
+            quantity: Number(i.quantity) || 1,
+            image: img,
+            customization: i.customization || {},
+            hasPhoto: Boolean(i.hasPhoto || i.referencePhotoUrl),
+            referencePhotoUrl: i.referencePhotoUrl || null,
+          };
+        })
+      ),
       totalAmount: Number(calculatedTotal),
       itemCount: parsedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0),
       orderSource,

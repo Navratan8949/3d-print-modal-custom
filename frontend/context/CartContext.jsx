@@ -48,14 +48,23 @@ export function CartProvider({ children }) {
         updated[existingIndex].quantity += quantity;
         return updated;
       } else {
+        const imgUrl =
+          product.image_url ||
+          (product.images && product.images[0]) ||
+          product.image ||
+          "/images/products/fullbody-figurine-hero.jpeg";
         const newItem = {
           cartId: `${product.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
           id: product.id,
-          slug: product.slug,
+          sku: product.sku || "",
+          slug: product.slug || "",
           name: product.name,
           category: product.category,
-          priceLabel: product.priceLabel || "Request Price",
-          imageKey: product.imageKey,
+          price: Number(product.price) || 0,
+          priceLabel: product.priceLabel || `₹${product.price}`,
+          image: imgUrl,
+          image_url: imgUrl,
+          imageKey: product.imageKey || "",
           quantity,
           customization,
           hasPhoto,

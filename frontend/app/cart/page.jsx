@@ -22,36 +22,11 @@ import {
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI } from "@/lib/api";
+import { getOrderItemImage } from "@/lib/orderImages";
 import CartItem from "@/components/cart/CartItem";
 import SectionHeading from "@/components/common/SectionHeading";
 
-const INDIAN_STATES = [
-  "Rajasthan",
-  "Maharashtra",
-  "Delhi NCR",
-  "Uttar Pradesh",
-  "Gujarat",
-  "Karnataka",
-  "Haryana",
-  "Madhya Pradesh",
-  "Punjab",
-  "Tamil Nadu",
-  "Telangana",
-  "West Bengal",
-  "Bihar",
-  "Andhra Pradesh",
-  "Assam",
-  "Chhattisgarh",
-  "Goa",
-  "Himachal Pradesh",
-  "Jharkhand",
-  "Kerala",
-  "Odisha",
-  "Uttarakhand",
-  "Jammu and Kashmir",
-  "Chandigarh",
-  "Other State / UT",
-];
+import { INDIAN_STATES } from "@/data/states";
 
 export default function CartPage() {
   const {
@@ -82,6 +57,7 @@ export default function CartPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(null);
+  const [allowGuest, setAllowGuest] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -203,7 +179,7 @@ export default function CartPage() {
           slug: item.slug || "",
           price: Number(item.price) || 0,
           quantity: Number(item.quantity) || 1,
-          image: item.image || item.image_url || "",
+          image: getOrderItemImage(item),
           customization: item.customization || {},
           hasPhoto: Boolean(item.hasPhoto),
         })),
@@ -297,10 +273,10 @@ export default function CartPage() {
             </a>
 
             <Link
-              href="/my-orders"
+              href={isAuthenticated ? `/my-orders/${orderPlaced.orderNumber || orderPlaced._id}` : "/my-orders"}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs transition-colors shadow-sm"
             >
-              <span>View In My Orders</span>
+              <span>{isAuthenticated ? "Track Live in My Orders" : "View in My Orders"}</span>
               <ArrowRight className="w-4 h-4 text-amber-400" />
             </Link>
           </div>
@@ -396,19 +372,101 @@ export default function CartPage() {
             )}
           </div>
 
-          {/* Right Column: Complete Verified Checkout Form */}
+          {/* Right Column: Verified Checkout Form or Auth Gate */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="rounded-3xl bg-white border border-stone-200/90 p-6 sm:p-7 shadow-xs space-y-6">
-              <div>
-                <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                  <span>Shipping & Contact Details</span>
-                </h3>
-                <p className="text-xs text-stone-500 mt-1">
-                  All fields marked with <span className="text-red-600 font-bold">*</span> are required for dispatch.
-                </p>
-              </div>
+            {!isAuthenticated && !allowGuest ? (
+              <div className="rounded-3xl bg-white border border-stone-200/90 p-6 sm:p-8 shadow-xs space-y-6">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-700 shadow-2xs">
+                    <User className="w-8 h-8 text-amber-600" />
+                  </div>
+                  <span className="inline-block px-3 py-1 text-[11px] font-bold tracking-widest uppercase bg-amber-100 text-amber-900 rounded-full">
+                    Account Recommended to Place Order
+                  </span>
+                  <h3 className="text-2xl font-serif font-bold text-stone-900">
+                    Sign in to Complete Your Order
+                  </h3>
+                  <p className="text-xs text-stone-600 max-w-sm mx-auto leading-relaxed">
+                    Sign in or create an account so this custom 3D order is securely linked to your profile, accessible for live stage tracking in <strong>My Orders</strong>, and auto-dispatched.
+                  </p>
+                </div>
 
-              <form onSubmit={handleWhatsAppOrder} noValidate className="space-y-4">
+                <div className="space-y-3 pt-2">
+                  <Link
+                    href="/login?redirect=/cart"
+                    className="w-full py-3.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <span>Sign In to Continue</span>
+                    <ArrowRight className="w-4 h-4 text-amber-400" />
+                  </Link>
+
+                  <Link
+                    href="/register?redirect=/cart"
+                    className="w-full py-3.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/80 text-amber-900 font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>Create Free Account</span>
+                    <ArrowRight className="w-4 h-4 text-amber-700" />
+                  </Link>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 text-stone-600 text-[11px] space-y-1">
+                  <div className="font-semibold text-stone-800 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Your bag is preserved</span>
+                  </div>
+                  <p>Your {cart.length} item(s) will remain in your cart when you sign in or register.</p>
+                </div>
+
+                <div className="pt-2 border-t border-stone-100 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setAllowGuest(true)}
+                    className="text-xs text-stone-500 hover:text-stone-800 underline font-medium transition-colors"
+                  >
+                    Or continue as Guest (Direct WhatsApp Order)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-3xl bg-white border border-stone-200/90 p-6 sm:p-7 shadow-xs space-y-6">
+                {isAuthenticated ? (
+                  <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                        {user?.name ? user.name[0] : "U"}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-stone-900 truncate">
+                          Ordering as {user?.name}
+                        </div>
+                        <div className="text-[11px] text-emerald-800 truncate">
+                          {user?.email} • Order linked to account
+                        </div>
+                      </div>
+                    </div>
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 ml-2" />
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between text-xs text-amber-900">
+                    <span>Checking out as Guest</span>
+                    <Link href="/login?redirect=/cart" className="font-semibold underline text-amber-950">
+                      Sign In instead
+                    </Link>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+                    <span>Shipping & Delivery Details</span>
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-1">
+                    {isAuthenticated
+                      ? "Your delivery details have been pre-filled from your profile."
+                      : "All fields marked with * are required for dispatch."}
+                  </p>
+                </div>
+
+                <form onSubmit={handleWhatsAppOrder} noValidate className="space-y-4">
                 {/* 1. Full Name */}
                 <div>
                   <label
@@ -708,6 +766,7 @@ export default function CartPage() {
                 </div>
               </form>
             </div>
+            )}
           </div>
         </div>
       )}

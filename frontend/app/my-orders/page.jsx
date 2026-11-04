@@ -13,9 +13,11 @@ import {
   Loader2,
   AlertCircle,
   ShoppingBag,
+  Camera,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI } from "@/lib/api";
+import { getOrderItemImage } from "@/lib/orderImages";
 import SectionHeading from "@/components/common/SectionHeading";
 
 export default function MyOrdersPage() {
@@ -219,17 +221,33 @@ export default function MyOrdersPage() {
                 <div className="divide-y divide-stone-100">
                   {order.items?.map((item, idx) => (
                     <div key={idx} className="py-3.5 first:pt-0 last:pb-0 flex items-start gap-4">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-16 h-16 object-cover rounded-xl border border-stone-200/80 bg-stone-100 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
-                          3D
-                        </div>
-                      )}
+                      {(() => {
+                        const itemImg = getOrderItemImage(item);
+                        return (
+                          <div className="relative shrink-0">
+                            <img
+                              src={itemImg}
+                              alt={item.name}
+                              className="w-16 h-16 object-cover rounded-xl border border-stone-200/80 bg-stone-100 shadow-2xs"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                              }}
+                            />
+                            {item.referencePhotoUrl && (
+                              <a
+                                href={item.referencePhotoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-0.5 shadow-xs"
+                                title="Reference photo attached"
+                              >
+                                <Camera className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       <div className="flex-1 min-w-0 space-y-1">
                         <h4 className="text-sm font-semibold text-stone-900 truncate">{item.name}</h4>
