@@ -53,10 +53,10 @@ export default function Header() {
           isScrolled
             ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-xs border-b border-stone-200/80"
             : "bg-[#FAF8F5] border-b border-stone-200/50"
-        } h-16 sm:h-20 flex items-center`}
+        }`}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-3 sm:gap-6 lg:gap-8 h-16 sm:h-20">
             {/* Zone 1: Single element brand mark */}
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-3">
               <button
