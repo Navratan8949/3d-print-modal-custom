@@ -1,5 +1,8 @@
 export default function robots() {
-  const baseUrl = process.env.APP_URL || "https://prime3dworld.com";
+  const baseUrl =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://www.prime3dworld.in";
   return {
     rules: {
       userAgent: "*",
