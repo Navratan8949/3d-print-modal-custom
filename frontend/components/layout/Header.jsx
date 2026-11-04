@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, ShoppingBag, MessageCircle, Menu, User as UserIcon, LogOut, Package, ShieldCheck } from "lucide-react";
+import { Search, ShoppingBag, MessageCircle, Menu, User as UserIcon, LogOut, Package, ShieldCheck, Sparkles } from "lucide-react";
 import Logo from "@/components/common/Logo";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -149,25 +149,45 @@ export default function Header() {
                           )}
                         </div>
 
-                        {isAdmin && (
+                        {isAdmin ? (
+                          <>
+                            <Link
+                              href="/admin"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-amber-900 bg-amber-50/70 hover:bg-amber-100/70 transition-colors"
+                            >
+                              <ShieldCheck className="w-4 h-4 text-amber-700" />
+                              <span>Admin Portal</span>
+                            </Link>
+
+                            <Link
+                              href="/admin/orders"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors"
+                            >
+                              <Package className="w-4 h-4 text-stone-500" />
+                              <span>Manage Orders</span>
+                            </Link>
+
+                            <Link
+                              href="/admin/products"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors"
+                            >
+                              <Sparkles className="w-4 h-4 text-stone-500" />
+                              <span>Products Catalog</span>
+                            </Link>
+                          </>
+                        ) : (
                           <Link
-                            href="/admin"
+                            href="/my-orders"
                             onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-amber-900 bg-amber-50/70 hover:bg-amber-100/70 transition-colors"
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors"
                           >
-                            <ShieldCheck className="w-4 h-4 text-amber-700" />
-                            <span>Admin Portal</span>
+                            <Package className="w-4 h-4 text-stone-500" />
+                            <span>My Orders & Tracking</span>
                           </Link>
                         )}
-
-                        <Link
-                          href="/my-orders"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors"
-                        >
-                          <Package className="w-4 h-4 text-stone-500" />
-                          <span>My Orders & Tracking</span>
-                        </Link>
 
                         <button
                           onClick={() => {

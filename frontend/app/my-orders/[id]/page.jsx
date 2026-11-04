@@ -19,9 +19,11 @@ import {
   Phone,
   Mail,
   ShoppingBag,
+  Camera,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI } from "@/lib/api";
+import { getOrderItemImage } from "@/lib/orderImages";
 
 export default function CustomerOrderDetailPage({ params }) {
   const unwrappedParams = use(params);
@@ -300,17 +302,33 @@ export default function CustomerOrderDetailPage({ params }) {
             <div key={idx} className="p-5 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded-2xl border border-stone-200 bg-stone-100 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
-                      3D
-                    </div>
-                  )}
+                  {(() => {
+                    const itemImg = getOrderItemImage(item);
+                    return (
+                      <div className="relative shrink-0">
+                        <img
+                          src={itemImg}
+                          alt={item.name}
+                          className="w-16 h-16 object-cover rounded-2xl border border-stone-200 bg-stone-100 shadow-2xs"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                          }}
+                        />
+                        {item.referencePhotoUrl && (
+                          <a
+                            href={item.referencePhotoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs"
+                            title="Reference photo attached"
+                          >
+                            <Camera className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="space-y-1">
                     <h3 className="font-semibold text-sm text-stone-900">{item.name}</h3>

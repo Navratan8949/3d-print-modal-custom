@@ -11,6 +11,7 @@ import {
   LogOut,
   Package,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import Logo from "@/components/common/Logo";
 import { useAuth } from "@/context/AuthContext";
@@ -104,31 +105,57 @@ export default function MobileMenu({ isOpen, onClose }) {
                   <div className="h-px bg-stone-200" />
                 </div>
 
-                {isAdmin && (
+                {isAdmin ? (
+                  <>
+                    <Link
+                      href="/admin"
+                      onClick={onClose}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-amber-700" />
+                        <span>Admin Portal</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-amber-600" />
+                    </Link>
+
+                    <Link
+                      href="/admin/orders"
+                      onClick={onClose}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-stone-800 hover:bg-stone-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-stone-500" />
+                        <span>Manage Orders</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-stone-400" />
+                    </Link>
+
+                    <Link
+                      href="/admin/products"
+                      onClick={onClose}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-stone-800 hover:bg-stone-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-stone-500" />
+                        <span>Products Catalog</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-stone-400" />
+                    </Link>
+                  </>
+                ) : (
                   <Link
-                    href="/admin"
+                    href="/my-orders"
                     onClick={onClose}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 transition-colors"
+                    className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-stone-800 hover:bg-stone-100 transition-colors"
                   >
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-amber-700" />
-                      <span>Admin Portal</span>
+                      <Package className="w-4 h-4 text-stone-500" />
+                      <span>My Orders & Tracking</span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-amber-600" />
+                    <ArrowRight className="w-4 h-4 text-stone-400" />
                   </Link>
                 )}
-
-                <Link
-                  href="/my-orders"
-                  onClick={onClose}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-stone-800 hover:bg-stone-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-stone-500" />
-                    <span>My Orders</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-stone-400" />
-                </Link>
 
                 <button
                   onClick={() => {
