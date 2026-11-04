@@ -1,17 +1,33 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PRODUCTS, getProductBySlugOrId } from "@/data/products";
 import ProductDetailView from "@/components/products/ProductDetailView";
 import ProductCard from "@/components/products/ProductCard";
 
-export function generateStaticParams() {
-  const params = [];
-  PRODUCTS.forEach((product) => {
-    params.push({ slug: product.slug });
-    params.push({ slug: String(product.id) });
-  });
-  return params;
+export async function generateStaticParams() {
+  try {
+    const apiUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:5001/api";
+    const res = await fetch(`${apiUrl}/products?limit=100`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.products) {
+        const params = [];
+        data.products.forEach((product) => {
+          if (product.slug) params.push({ slug: product.slug });
+          if (product.id) params.push({ slug: String(product.id) });
+        });
+        return params;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return [];
 }
 
 export const dynamicParams = true;
@@ -32,8 +48,7 @@ async function fetchProduct(slug) {
   } catch {
     // fallback
   }
-  const fallback = getProductBySlugOrId(slug);
-  return fallback ? { product: fallback, related: [] } : null;
+  return null;
 }
 
 export async function generateMetadata({ params }) {
@@ -117,10 +132,7 @@ export default async function ProductDetailPage({ params }) {
   }
 
   // Complementary creations
-  const relatedProducts =
-    data?.related && data.related.length > 0
-      ? data.related
-      : PRODUCTS.filter((p) => String(p.id) !== String(product.id)).slice(0, 4);
+  const relatedProducts = data?.related || [];
 
   return (
     <div className="py-8 sm:py-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
@@ -128,31 +140,33 @@ export default async function ProductDetailPage({ params }) {
       <ProductDetailView product={product} />
 
       {/* Complementary & Related Products */}
-      <div className="border-t border-stone-200/80 pt-12 space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">
-              More Creations
-            </span>
-            <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mt-1">
-              You May Also Like
-            </h2>
+      {relatedProducts.length > 0 && (
+        <div className="border-t border-stone-200/80 pt-12 space-y-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">
+                More Creations
+              </span>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mt-1">
+                You May Also Like
+              </h2>
+            </div>
+            <Link
+              href="/shop"
+              className="text-xs sm:text-sm font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-1"
+            >
+              <span>Explore Full Catalog</span>
+              <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+            </Link>
           </div>
-          <Link
-            href="/shop"
-            className="text-xs sm:text-sm font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-1"
-          >
-            <span>View All ({PRODUCTS.length} items)</span>
-            <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
-          </Link>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {relatedProducts.map((p) => (
-            <ProductCard key={p.id || p._id} product={p} />
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id || p._id} product={p} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

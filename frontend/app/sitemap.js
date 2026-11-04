@@ -1,6 +1,4 @@
-import { PRODUCTS } from "@/data/products";
-
-export default function sitemap() {
+export default async function sitemap() {
   const baseUrl =
     process.env.APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -18,12 +16,29 @@ export default function sitemap() {
     priority: route === "" ? 1.0 : 0.8,
   }));
 
-  const productRoutes = PRODUCTS.map((product) => ({
-    url: `${baseUrl}/products/${product.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly",
-    priority: 0.9,
-  }));
+  let productRoutes = [];
+  try {
+    const apiUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:5001/api";
+    const res = await fetch(`${apiUrl}/products?limit=100`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.products) {
+        productRoutes = data.products.map((p) => ({
+          url: `${baseUrl}/products/${p.slug || p.id}`,
+          lastModified: new Date(p.updatedAt || Date.now()),
+          changeFrequency: "weekly",
+          priority: 0.9,
+        }));
+      }
+    }
+  } catch {
+    // fallback
+  }
 
   return [...staticRoutes, ...productRoutes];
 }

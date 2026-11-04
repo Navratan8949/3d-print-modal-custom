@@ -44,6 +44,7 @@ export default function AdminProductsPage() {
     shortDescription: "",
     description: "",
     is_featured: false,
+    showInSlider: false,
     isCustomizable: true,
     tags: "",
     currentStock: 100,
@@ -95,6 +96,7 @@ export default function AdminProductsPage() {
       shortDescription: prod.shortDescription || "",
       description: prod.description || "",
       is_featured: Boolean(prod.is_featured),
+      showInSlider: Boolean(prod.showInSlider),
       isCustomizable: prod.isCustomizable !== false,
       tags: Array.isArray(prod.tags) ? prod.tags.join(", ") : "",
       currentStock: prod.currentStock || 100,
@@ -113,6 +115,19 @@ export default function AdminProductsPage() {
       );
     } catch (err) {
       alert("Error toggling featured: " + err.message);
+    }
+  };
+
+  const handleToggleSlider = async (productId) => {
+    try {
+      const res = await productsAPI.toggleSlider(productId);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p._id === productId ? { ...p, showInSlider: res.showInSlider } : p
+        )
+      );
+    } catch (err) {
+      alert("Error toggling slider status: " + err.message);
     }
   };
 
@@ -149,6 +164,7 @@ export default function AdminProductsPage() {
       formData.append("shortDescription", form.shortDescription);
       formData.append("description", form.description);
       formData.append("is_featured", form.is_featured);
+      formData.append("showInSlider", form.showInSlider);
       formData.append("isCustomizable", form.isCustomizable);
       formData.append("tags", form.tags);
       formData.append("currentStock", form.currentStock);
@@ -269,11 +285,18 @@ export default function AdminProductsPage() {
                     alt={prod.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {prod.is_featured && (
-                    <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white shadow-xs">
-                      Featured
-                    </span>
-                  )}
+                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start pointer-events-none">
+                    {prod.is_featured && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white shadow-xs">
+                        Featured
+                      </span>
+                    )}
+                    {prod.showInSlider && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-600 text-white shadow-xs">
+                        In Slide ✓
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleToggleFeatured(prod._id)}
                     className={`absolute top-2.5 right-2.5 p-1.5 rounded-full backdrop-blur-xs transition-colors ${
@@ -313,6 +336,38 @@ export default function AdminProductsPage() {
                   <p className="text-[11px] text-stone-500 line-clamp-2">
                     {prod.shortDescription || prod.description}
                   </p>
+
+                  {/* Slider Toggle Button */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSlider(prod._id)}
+                      className={`w-full py-1.5 px-3 rounded-xl text-xs font-semibold border flex items-center justify-between transition-colors cursor-pointer ${
+                        prod.showInSlider
+                          ? "bg-amber-500/10 text-amber-900 border-amber-300 hover:bg-amber-500/20"
+                          : "bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100"
+                      }`}
+                      title="Show or hide from homepage 3D slider"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            prod.showInSlider ? "bg-amber-600 animate-pulse" : "bg-stone-300"
+                          }`}
+                        />
+                        <span>Show in 3D Slide</span>
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          prod.showInSlider
+                            ? "bg-amber-600 text-white"
+                            : "bg-stone-200 text-stone-600"
+                        }`}
+                      >
+                        {prod.showInSlider ? "In Slide ✓" : "Off"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -552,7 +607,7 @@ export default function AdminProductsPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-6 pt-2">
+              <div className="flex flex-wrap items-center gap-6 pt-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -561,6 +616,18 @@ export default function AdminProductsPage() {
                     className="rounded border-stone-300 text-amber-600 focus:ring-amber-500 w-4 h-4"
                   />
                   <span className="font-medium text-stone-700">Featured Showcase</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.showInSlider}
+                    onChange={(e) => setForm({ ...form, showInSlider: e.target.checked })}
+                    className="rounded border-amber-500 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                  />
+                  <span className="font-semibold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-xs">
+                    Show in Slide (Hero 3D Slider)
+                  </span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">

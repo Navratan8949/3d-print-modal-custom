@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { Search, X, SlidersHorizontal, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
 import ProductGrid from "@/components/products/ProductGrid";
-import { PRODUCTS } from "@/data/products";
 import { CATEGORIES } from "@/data/categories";
 import { productsAPI } from "@/lib/api";
 
@@ -15,8 +14,8 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [productsList, setProductsList] = useState(PRODUCTS);
-  const [loading, setLoading] = useState(false);
+  const [productsList, setProductsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (categoryParam) {
@@ -25,15 +24,19 @@ function ShopContent() {
   }, [categoryParam]);
 
   useEffect(() => {
+    setLoading(true);
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
-        if (res && res.products && res.products.length > 0) {
+        if (res && res.products) {
           setProductsList(res.products);
         }
       })
       .catch((err) => {
-        console.warn("Using fallback products catalog:", err.message);
+        console.error("Failed to fetch dynamic products from database:", err.message);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 

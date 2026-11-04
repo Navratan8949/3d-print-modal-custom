@@ -20,6 +20,7 @@ exports.getAllProducts = async (req, res) => {
       category,
       search,
       featured,
+      slider,
       sort,
       minPrice,
       maxPrice,
@@ -43,6 +44,10 @@ exports.getAllProducts = async (req, res) => {
 
     if (featured === "true" || featured === true) {
       query.is_featured = true;
+    }
+
+    if (slider === "true" || slider === true) {
+      query.showInSlider = true;
     }
 
     if (minPrice || maxPrice) {
@@ -261,6 +266,7 @@ exports.createProduct = async (req, res) => {
       dimensions: dimensions || "Customizable",
       weight_g: weight_g ? Number(weight_g) : 100,
       is_featured: is_featured === "true" || is_featured === true,
+      showInSlider: req.body.showInSlider === "true" || req.body.showInSlider === true,
       isCustomizable: isCustomizable === "false" || isCustomizable === false ? false : true,
       customizationType: customizationType || "generic",
       availableOptions,
@@ -313,6 +319,12 @@ exports.updateProduct = async (req, res) => {
     }
     if (typeof updateData.tags === "string") {
       updateData.tags = updateData.tags.split(",").map((t) => t.trim());
+    }
+    if (updateData.showInSlider !== undefined) {
+      updateData.showInSlider = updateData.showInSlider === "true" || updateData.showInSlider === true;
+    }
+    if (updateData.is_featured !== undefined) {
+      updateData.is_featured = updateData.is_featured === "true" || updateData.is_featured === true;
     }
 
     // Append new uploaded images if any
@@ -401,4 +413,37 @@ exports.toggleFeatured = async (req, res) => {
     });
   }
 };
+
+// ==========================================
+// TOGGLE SHOW IN SLIDER (ADMIN)
+// ==========================================
+exports.toggleShowInSlider = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    product.showInSlider = !product.showInSlider;
+    await product.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Product is now ${product.showInSlider ? "shown in slider" : "hidden from slider"}`,
+      showInSlider: product.showInSlider,
+    });
+  } catch (error) {
+    console.error("Toggle show in slider error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to toggle slider status",
+    });
+  }
+};
+
 
