@@ -18,7 +18,11 @@ export const dynamicParams = true;
 
 async function fetchProduct(slug) {
   try {
-    const res = await fetch(`http://localhost:5001/api/products/${slug}`, {
+    const apiUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:5001/api";
+    const res = await fetch(`${apiUrl}/products/${slug}`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -43,15 +47,25 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const rawImage =
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.prime3dworld.in"
+  ).replace(/\/$/, "");
+
+  let rawImage =
     product.image_url ||
     (product.images && product.images[0]) ||
     "/images/products/fullbody-figurine-hero.jpeg";
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://prime3dworld.com";
+  if (typeof rawImage === "string" && rawImage.startsWith("/uploads/")) {
+    const backendUrl = (
+      process.env.NEXT_PUBLIC_BACKEND_URL || siteUrl
+    ).replace(/\/$/, "");
+    rawImage = `${backendUrl}${rawImage}`;
+  }
+
   const absoluteImageUrl = rawImage.startsWith("http")
     ? rawImage
-    : `${siteUrl.replace(/\/$/, "")}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
+    : `${siteUrl}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
 
   const pageTitle = `${product.name} (₹${product.price}) – Prime 3D World`;
   const pageDescription =
@@ -59,9 +73,14 @@ export async function generateMetadata({ params }) {
     (product.description ? product.description.slice(0, 160) : "") ||
     "Custom 3D printed creation sculpted with precision. Order directly on WhatsApp.";
 
+  const isPng = absoluteImageUrl.toLowerCase().endsWith(".png");
+
   return {
     title: pageTitle,
     description: pageDescription,
+    alternates: {
+      canonical: `${siteUrl}/products/${product.slug}`,
+    },
     openGraph: {
       title: pageTitle,
       description: pageDescription,
@@ -70,9 +89,11 @@ export async function generateMetadata({ params }) {
       images: [
         {
           url: absoluteImageUrl,
-          width: 1200,
-          height: 630,
+          secureUrl: absoluteImageUrl,
+          width: 1024,
+          height: 1536,
           alt: product.name,
+          type: isPng ? "image/png" : "image/jpeg",
         },
       ],
       type: "website",

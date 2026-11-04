@@ -1,7 +1,10 @@
 import { PRODUCTS } from "@/data/products";
 
 export default function sitemap() {
-  const baseUrl = process.env.APP_URL || "https://prime3dworld.com";
+  const baseUrl =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://www.prime3dworld.in";
 
   const staticRoutes = [
     "",

@@ -40,6 +40,15 @@ export default function ProductDetailView({ product }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const selectedImage = images[selectedImageIndex] || images[0];
 
+  const resolveImageUrl = (img) => {
+    if (!img) return "/images/products/fullbody-figurine-hero.jpeg";
+    if (typeof img === "string" && img.startsWith("/uploads/")) {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+      return `${backendUrl}${img}`;
+    }
+    return img;
+  };
+
   const handlePrevImage = () => {
     setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
@@ -79,10 +88,6 @@ export default function ProductDetailView({ product }) {
   const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState("description"); // description | howItWorks | specs | reviews
-
-  // Delivery Pincode state
-  const [pincode, setPincode] = useState("");
-  const [pincodeStatus, setPincodeStatus] = useState(null);
 
   const handlePhotosUpload = (e) => {
     const files = Array.from(e.target.files || []);
@@ -146,18 +151,12 @@ export default function ProductDetailView({ product }) {
 
   // Share Product Link on WhatsApp with Product Image preview
   const handleShareOnWhatsApp = () => {
-    const currentUrl = typeof window !== "undefined" ? window.location.href : `https://prime3dworld.com/products/${product.slug}`;
+    const currentUrl =
+      typeof window !== "undefined"
+        ? window.location.href
+        : `https://www.prime3dworld.in/products/${product.slug}`;
     const shareText = `Check out this custom 3D creation: *${product.name}* (₹${currentUnitPrice}) on Prime 3D World!\n\n${currentUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
-  };
-
-  const handleCheckPincode = (e) => {
-    e.preventDefault();
-    if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
-      setPincodeStatus("available");
-    } else {
-      setPincodeStatus("invalid");
-    }
   };
 
   return (
@@ -218,14 +217,11 @@ export default function ProductDetailView({ product }) {
         {/* Left Column: Multi-Image Showcase & Studio Trust */}
         <div className="lg:col-span-6 space-y-4">
           {/* Main Large Image with Floating Chevrons */}
-          <div className="relative aspect-square w-full rounded-3xl bg-stone-100 border border-stone-200/90 shadow-md overflow-hidden group">
-            <Image
-              src={selectedImage}
+          <div className="relative w-full rounded-3xl bg-stone-100/70 border border-stone-200/90 shadow-md overflow-hidden group flex items-center justify-center min-h-[320px]">
+            <img
+              src={resolveImageUrl(selectedImage)}
               alt={product.name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover transition-all duration-300"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-2xl transition-all duration-300"
             />
 
             {/* Etsy-Style Badges Overlay */}
@@ -281,18 +277,16 @@ export default function ProductDetailView({ product }) {
                   key={idx}
                   type="button"
                   onClick={() => setSelectedImageIndex(idx)}
-                  className={`relative h-20 w-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${
+                  className={`relative h-20 w-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all bg-stone-50 flex items-center justify-center p-1 ${
                     selectedImageIndex === idx
                       ? "border-amber-600 ring-2 ring-amber-600/20 scale-102 shadow-xs"
                       : "border-stone-200 hover:border-stone-400 opacity-70 hover:opacity-100"
                   }`}
                 >
-                  <Image
-                    src={img}
+                  <img
+                    src={resolveImageUrl(img)}
                     alt={`${product.name} perspective ${idx + 1}`}
-                    fill
-                    sizes="80px"
-                    className="object-cover"
+                    className="w-full h-full object-contain rounded-xl"
                   />
                 </button>
               ))}
@@ -608,41 +602,6 @@ export default function ProductDetailView({ product }) {
                   View Cart Bag →
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Delivery Pincode Checker */}
-          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-2">
-            <span className="text-xs font-bold text-stone-800 block">
-              Estimated Delivery &amp; Pincode Check:
-            </span>
-            <form onSubmit={handleCheckPincode} className="flex gap-2">
-              <input
-                type="text"
-                maxLength={6}
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-                placeholder="Enter 6-digit Pincode (e.g. 302001)"
-                className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:border-stone-800 tabular-nums"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-900 font-bold text-xs rounded-xl transition-colors"
-              >
-                Check
-              </button>
-            </form>
-
-            {pincodeStatus === "available" && (
-              <p className="text-xs text-emerald-700 flex items-center gap-1.5 pt-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Free Express Delivery available! Dispatches in 24-48 hrs.</span>
-              </p>
-            )}
-            {pincodeStatus === "invalid" && (
-              <p className="text-xs text-red-600 pt-1">
-                Please enter a valid 6-digit Indian PIN code.
-              </p>
             )}
           </div>
         </div>
