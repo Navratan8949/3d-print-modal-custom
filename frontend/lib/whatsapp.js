@@ -12,6 +12,7 @@ export const BRAND_EMAIL = "prime3dprintinglab@gmail.com";
  */
 export function createProductWhatsAppUrl({
   productName,
+  productUrl = "",
   quantity = 1,
   customerName = "",
   customerPhone = "",
@@ -22,6 +23,9 @@ export function createProductWhatsAppUrl({
   let message = `Hello Prime3Dworld!\n\n`;
   message += `I want to order the following 3D creation:\n\n`;
   message += `📦 *Product:* ${productName}\n`;
+  if (productUrl) {
+    message += `🔗 *Product Link:* ${productUrl}\n`;
+  }
   message += `🔢 *Quantity:* ${quantity}\n`;
 
   if (customerName) {
