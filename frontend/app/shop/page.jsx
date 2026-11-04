@@ -15,70 +15,70 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [productsList, setProductsList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [productsList, setProductsList] = useState(PRODUCTS);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, [categoryParam]);
+
+  useEffect(() => {
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
         if (res && res.products && res.products.length > 0) {
           setProductsList(res.products);
-        } else {
-          setProductsList(PRODUCTS);
         }
       })
       .catch((err) => {
         console.warn("Using fallback products catalog:", err.message);
-        setProductsList(PRODUCTS);
-      })
-      .finally(() => {
-        setLoading(false);
       });
   }, []);
 
   // Filtering and Sorting logic
   const filteredProducts = useMemo(() => {
-    let result = [...productsList];
+    let result = Array.isArray(productsList) ? [...productsList] : [];
 
     // Category filter
-    if (selectedCategory !== "all") {
-      result = result.filter(
-        (p) =>
-          p.categoryId === selectedCategory ||
-          p.category.toLowerCase().includes(selectedCategory.toLowerCase())
-      );
+    if (selectedCategory && selectedCategory !== "all") {
+      result = result.filter((p) => {
+        const catId = (p.categoryId || "").toLowerCase();
+        const catName = (p.category || "").toLowerCase();
+        const target = selectedCategory.toLowerCase();
+        return catId === target || catName === target || catName.includes(target) || catId.includes(target);
+      });
     }
 
     // Search query filter
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (p) =>
           String(p.id) === q ||
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          p.shortDescription.toLowerCase().includes(q) ||
-          p.tags?.some((t) => t.toLowerCase().includes(q))
+          p.name?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
+          p.shortDescription?.toLowerCase().includes(q) ||
+          p.tags?.some((t) => t?.toLowerCase().includes(q))
       );
     }
 
     // Sorting
     if (sortBy === "price-low") {
-      result.sort((a, b) => a.price - b.price);
+      result.sort((a, b) => Number(a.price) - Number(b.price));
     } else if (sortBy === "price-high") {
-      result.sort((a, b) => b.price - a.price);
+      result.sort((a, b) => Number(b.price) - Number(a.price));
     } else if (sortBy === "name-asc") {
-      result.sort((a, b) => a.name.localeCompare(b.name));
+      result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     } else if (sortBy === "name-desc") {
-      result.sort((a, b) => b.name.localeCompare(a.name));
+      result.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
     } else if (sortBy === "featured") {
       result.sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0));
     }
 
     return result;
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [productsList, selectedCategory, searchQuery, sortBy]);
 
   const clearAllFilters = () => {
     setSelectedCategory("all");
@@ -168,7 +168,7 @@ function ShopContent() {
                 : "bg-stone-50 text-stone-700 border border-stone-200 hover:bg-stone-100"
             }`}
           >
-            All Products ({PRODUCTS.length})
+            All Products ({productsList.length})
           </button>
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.slug;
