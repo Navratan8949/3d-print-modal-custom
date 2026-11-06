@@ -235,7 +235,7 @@ export default function HeroCardStack({ initialProducts = [] }) {
   }
 
   const currentTopProduct = items[items.length - 1];
-  const currentIndex = products.findIndex((p) => p.id === currentTopProduct.id);
+  const currentIndex = items.findIndex((p) => p.id === currentTopProduct?.id);
 
   return (
     <div
@@ -308,7 +308,7 @@ export default function HeroCardStack({ initialProducts = [] }) {
 
         {/* Counter Dots */}
         <div className="flex items-center gap-1">
-          {products.map((p, idx) => (
+          {items.map((p, idx) => (
             <span
               key={p.id}
               className={`h-1.5 rounded-full transition-all duration-200 ${
