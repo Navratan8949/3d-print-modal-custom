@@ -7,6 +7,7 @@ import Image from "next/image";
 import { motion, useMotionValue } from "framer-motion";
 import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from "lucide-react";
 import { productsAPI } from "@/lib/api";
+import { resolveProductImage, DEFAULT_PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
 const formatCardProduct = (p) => ({
   id: p.id || p._id,
@@ -15,7 +16,7 @@ const formatCardProduct = (p) => ({
   category: p.category,
   price: typeof p.price === "number" ? `₹${p.price}` : p.price || "₹999",
   tag: p.showInSlider ? "Featured in Slider" : p.is_featured ? "Featured 3D" : p.category || "3D Creation",
-  imageUrl: p.image_url || p.images?.[0] || "/images/products/fullbody-figurine-hero.jpeg",
+  imageUrl: resolveProductImage(p.image_url || p.images?.[0]),
 });
 
 const ROTATIONS = [-4, 3.5, -2.5, 2];

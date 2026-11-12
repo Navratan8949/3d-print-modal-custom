@@ -167,6 +167,20 @@ export const productsAPI = {
   toggleSlider: async (id) => {
     return request(`/products/${id}/toggle-slider`, { method: "PATCH" });
   },
+
+  deleteImage: async (id, imageUrl) => {
+    return request(`/products/${id}/images`, {
+      method: "DELETE",
+      body: JSON.stringify({ imageUrl }),
+    });
+  },
+
+  setPrimaryImage: async (id, imageUrl) => {
+    return request(`/products/${id}/primary-image`, {
+      method: "PATCH",
+      body: JSON.stringify({ imageUrl }),
+    });
+  },
 };
 
 // ==========================================
