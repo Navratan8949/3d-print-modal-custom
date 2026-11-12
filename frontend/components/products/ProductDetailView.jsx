@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createProductWhatsAppUrl } from "@/lib/whatsapp";
+import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function ProductDetailView({ product }) {
   const { addToCart, setIsDrawerOpen } = useCart();
@@ -39,14 +40,7 @@ export default function ProductDetailView({ product }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const selectedImage = images[selectedImageIndex] || images[0];
 
-  const resolveImageUrl = (img) => {
-    if (!img) return "/images/products/fullbody-figurine-hero.jpeg";
-    if (typeof img === "string" && img.startsWith("/uploads/")) {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
-      return `${backendUrl}${img}`;
-    }
-    return img;
-  };
+  const resolveImageUrl = (img) => resolveProductImage(img);
 
   const handlePrevImage = () => {
     setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -203,6 +197,7 @@ export default function ProductDetailView({ product }) {
             <img
               src={resolveImageUrl(selectedImage)}
               alt={product.name}
+              onError={(e) => handleImageError(e)}
               className="w-full h-auto max-h-[85vh] object-contain rounded-2xl transition-all duration-300"
             />
 
@@ -268,6 +263,7 @@ export default function ProductDetailView({ product }) {
                   <img
                     src={resolveImageUrl(img)}
                     alt={`${product.name} perspective ${idx + 1}`}
+                    onError={(e) => handleImageError(e)}
                     className="w-full h-full object-contain rounded-xl"
                   />
                 </button>

@@ -26,6 +26,19 @@ const nextConfig = {
     ],
   },
   transpilePackages: ["motion"],
+  async rewrites() {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      (process.env.NEXT_PUBLIC_API_URL
+        ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "")
+        : "http://localhost:5001");
+    return [
+      {
+        source: "/uploads/:path*",
+        destination: `${backendUrl}/uploads/:path*`,
+      },
+    ];
+  },
   webpack: (config, { dev }) => {
     if (dev && process.env.DISABLE_HMR === "true") {
       config.watchOptions = {

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { productsAPI } from "@/lib/api";
 import { CATEGORIES } from "@/data/categories";
+import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
@@ -48,6 +49,7 @@ export default function AdminProductsPage() {
     isCustomizable: true,
     tags: "",
     currentStock: 100,
+    existingImages: [],
   };
 
   const [form, setForm] = useState(initialForm);
@@ -100,6 +102,11 @@ export default function AdminProductsPage() {
       isCustomizable: prod.isCustomizable !== false,
       tags: Array.isArray(prod.tags) ? prod.tags.join(", ") : "",
       currentStock: prod.currentStock || 100,
+      existingImages: Array.isArray(prod.images) && prod.images.length > 0
+        ? [...prod.images]
+        : prod.image_url
+        ? [prod.image_url]
+        : [],
     });
     setImageFiles([]);
     setIsModalOpen(true);
@@ -168,6 +175,7 @@ export default function AdminProductsPage() {
       formData.append("isCustomizable", form.isCustomizable);
       formData.append("tags", form.tags);
       formData.append("currentStock", form.currentStock);
+      formData.append("existingImages", JSON.stringify(form.existingImages || []));
 
       for (let i = 0; i < imageFiles.length; i++) {
         formData.append("images", imageFiles[i]);
@@ -281,8 +289,9 @@ export default function AdminProductsPage() {
               <div>
                 <div className="relative aspect-4/3 bg-stone-100 overflow-hidden">
                   <img
-                    src={prod.image_url || prod.images?.[0] || "/images/products/placeholder.jpeg"}
+                    src={resolveProductImage(prod.image_url || prod.images?.[0])}
                     alt={prod.name}
+                    onError={(e) => handleImageError(e)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start pointer-events-none">
@@ -559,6 +568,48 @@ export default function AdminProductsPage() {
               </div>
 
               <div className="space-y-2">
+                {/* Existing Images in Quick Edit with Delete Button */}
+                {editingProduct && form.existingImages && form.existingImages.length > 0 && (
+                  <div className="space-y-1.5 pb-2 border-b border-stone-100">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-stone-700">
+                        Current Product Photos ({form.existingImages.length})
+                      </label>
+                      <span className="text-[10px] text-stone-400">Click ✕ to remove any photo</span>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                      {form.existingImages.map((img, idx) => (
+                        <div key={idx} className="relative rounded-xl overflow-hidden border border-stone-200 aspect-square bg-stone-100 group shadow-2xs">
+                          <img
+                            src={resolveProductImage(img)}
+                            alt={`Existing ${idx + 1}`}
+                            onError={(e) => handleImageError(e)}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm({
+                                ...form,
+                                existingImages: form.existingImages.filter((_, i) => i !== idx),
+                              })
+                            }
+                            className="absolute top-1 right-1 w-5 h-5 bg-rose-600 hover:bg-rose-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold transition-colors shadow-xs cursor-pointer"
+                            title="Remove this photo from product"
+                          >
+                            ✕
+                          </button>
+                          {idx === 0 && (
+                            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-stone-950/80 text-white">
+                              Main
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <label className="font-semibold text-stone-700">Upload Product Images (Multiple Supported)</label>
                   {imageFiles.length > 0 && (

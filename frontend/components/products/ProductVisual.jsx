@@ -1,4 +1,8 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { resolveProductImage, DEFAULT_PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
 const IMAGE_MAP = {
   "figurine-couple": "/images/products/miniature-female.jpeg",
@@ -22,13 +26,18 @@ export default function ProductVisual({
   aspectRatio = "4/3",
   priority = false,
 }) {
-  let imageSrc = src || IMAGE_MAP[imageKey] || "/images/products/fullbody-figurine-hero.jpeg";
-  if (imageSrc && imageSrc.startsWith("/uploads/")) {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
-    imageSrc = `${backendUrl}${imageSrc}`;
-  }
+  const initialResolved = resolveProductImage(src || IMAGE_MAP[imageKey] || DEFAULT_PLACEHOLDER_IMAGE);
+  const [currentSrc, setCurrentSrc] = useState(initialResolved);
+  const [hasError, setHasError] = useState(false);
 
-  const isLocalBackend = imageSrc.startsWith("http://localhost") || imageSrc.startsWith("http://127.0.0.1");
+  useEffect(() => {
+    setCurrentSrc(resolveProductImage(src || IMAGE_MAP[imageKey] || DEFAULT_PLACEHOLDER_IMAGE));
+    setHasError(false);
+  }, [src, imageKey]);
+
+  const isLocalBackend =
+    typeof currentSrc === "string" &&
+    (currentSrc.startsWith("http://localhost") || currentSrc.startsWith("http://127.0.0.1"));
 
   return (
     <div
@@ -39,10 +48,16 @@ export default function ProductVisual({
     >
       <div className="relative w-full h-full">
         <Image
-          src={imageSrc}
+          src={hasError ? DEFAULT_PLACEHOLDER_IMAGE : currentSrc}
           alt={alt}
           fill
           unoptimized={isLocalBackend}
+          onError={() => {
+            if (!hasError) {
+              setHasError(true);
+              setCurrentSrc(DEFAULT_PLACEHOLDER_IMAGE);
+            }
+          }}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
           priority={priority}

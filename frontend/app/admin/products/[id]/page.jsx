@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { productsAPI } from "@/lib/api";
 import { CATEGORIES } from "@/data/categories";
+import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function AdminProductDetailPage({ params }) {
   const router = useRouter();
@@ -133,6 +134,7 @@ export default function AdminProductDetailPage({ params }) {
       formData.append("isCustomizable", form.isCustomizable);
       formData.append("currentStock", form.currentStock || 100);
       formData.append("status", form.status);
+      formData.append("existingImages", JSON.stringify(product.images || []));
 
       if (newImageFiles.length > 0) {
         for (let i = 0; i < newImageFiles.length; i++) {
@@ -151,6 +153,70 @@ export default function AdminProductDetailPage({ params }) {
       setError(err.message || "Failed to update product");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const [deletingImage, setDeletingImage] = useState(null);
+  const [settingPrimary, setSettingPrimary] = useState(null);
+  const [externalImageUrl, setExternalImageUrl] = useState("");
+  const [addingExternalUrl, setAddingExternalUrl] = useState(false);
+
+  const handleDeleteImage = async (imgUrl) => {
+    if (!confirm("Are you sure you want to delete this photo?")) return;
+    setDeletingImage(imgUrl);
+    try {
+      const res = await productsAPI.deleteImage(product._id, imgUrl);
+      if (res && res.product) {
+        setProduct(res.product);
+        setSuccessMsg("Photo deleted successfully!");
+        setTimeout(() => setSuccessMsg(""), 3000);
+      }
+    } catch (err) {
+      alert("Failed to delete photo: " + err.message);
+    } finally {
+      setDeletingImage(null);
+    }
+  };
+
+  const handleSetPrimaryImage = async (imgUrl) => {
+    setSettingPrimary(imgUrl);
+    try {
+      const res = await productsAPI.setPrimaryImage(product._id, imgUrl);
+      if (res && res.product) {
+        setProduct(res.product);
+        setSuccessMsg("Primary photo updated!");
+        setTimeout(() => setSuccessMsg(""), 3000);
+      }
+    } catch (err) {
+      alert("Failed to set primary image: " + err.message);
+    } finally {
+      setSettingPrimary(null);
+    }
+  };
+
+  const handleAddExternalImageUrl = async () => {
+    if (!externalImageUrl || !externalImageUrl.trim()) {
+      alert("Please enter a valid image URL");
+      return;
+    }
+    const cleanUrl = externalImageUrl.trim();
+    setAddingExternalUrl(true);
+    try {
+      const currentList = product.images || [];
+      const updatedList = [...currentList, cleanUrl];
+      const formData = new FormData();
+      formData.append("existingImages", JSON.stringify(updatedList));
+      const res = await productsAPI.update(product._id, formData);
+      if (res && res.product) {
+        setProduct(res.product);
+        setExternalImageUrl("");
+        setSuccessMsg("External photo URL added successfully!");
+        setTimeout(() => setSuccessMsg(""), 3000);
+      }
+    } catch (err) {
+      alert("Failed to add image URL: " + err.message);
+    } finally {
+      setAddingExternalUrl(false);
     }
   };
 
@@ -450,24 +516,59 @@ export default function AdminProductDetailPage({ params }) {
             {/* Current Images */}
             {allImages.length === 0 ? (
               <div className="p-8 text-center text-stone-400 text-xs bg-stone-50 rounded-2xl border border-dashed border-stone-200">
-                No images uploaded yet
+                No images uploaded yet. Upload below or paste an image link.
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2.5">
-                {allImages.map((img, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-stone-200 aspect-square bg-stone-100">
-                    <img
-                      src={img}
-                      alt={`Product preview ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {idx === 0 && (
-                      <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-stone-950/80 text-white backdrop-blur-xs">
-                        Primary
-                      </span>
-                    )}
-                  </div>
-                ))}
+                {allImages.map((img, idx) => {
+                  const resolved = resolveProductImage(img);
+                  const isPrimary = idx === 0 || img === product.image_url;
+                  return (
+                    <div
+                      key={idx}
+                      className="relative group rounded-xl overflow-hidden border border-stone-200 aspect-square bg-stone-100 shadow-2xs"
+                    >
+                      <img
+                        src={resolved}
+                        alt={`Product preview ${idx + 1}`}
+                        onError={(e) => handleImageError(e)}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+
+                      {/* Primary Badge */}
+                      {isPrimary ? (
+                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-stone-950/85 text-white backdrop-blur-xs shadow-xs z-10">
+                          Primary ★
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimaryImage(img)}
+                          disabled={settingPrimary === img}
+                          className="absolute bottom-1.5 left-1.5 right-1.5 py-1 px-2 rounded-lg bg-white/95 hover:bg-white text-stone-800 text-[10px] font-bold backdrop-blur-xs shadow-sm opacity-90 group-hover:opacity-100 transition-opacity z-10 text-center cursor-pointer border border-stone-200"
+                          title="Make this photo the main product image"
+                        >
+                          {settingPrimary === img ? "Setting..." : "Set as Primary"}
+                        </button>
+                      )}
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(img)}
+                        disabled={deletingImage === img}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-600 hover:bg-rose-700 text-white rounded-full flex items-center justify-center text-xs shadow-md transition-all active:scale-90 z-20 cursor-pointer"
+                        title="Delete this photo"
+                      >
+                        {deletingImage === img ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -516,6 +617,33 @@ export default function AdminProductDetailPage({ params }) {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Add Photo via URL */}
+            <div className="space-y-1.5 pt-3 border-t border-stone-100">
+              <label className="text-xs font-semibold text-stone-700 block">
+                Add Photo via Direct Web Link
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={externalImageUrl}
+                  onChange={(e) => setExternalImageUrl(e.target.value)}
+                  placeholder="https://images.example.com/item.jpg"
+                  className="flex-1 text-xs px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 focus:bg-white focus:outline-hidden focus:border-amber-600"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddExternalImageUrl}
+                  disabled={addingExternalUrl || !externalImageUrl.trim()}
+                  className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shrink-0 cursor-pointer"
+                >
+                  {addingExternalUrl ? "Adding..." : "Add URL"}
+                </button>
+              </div>
+              <p className="text-[10px] text-stone-400">
+                Paste any direct HTTPS image link (Google Drive, Cloudinary, Imgur, etc.)
+              </p>
             </div>
           </div>
 

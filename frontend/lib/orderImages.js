@@ -1,4 +1,5 @@
 import { PRODUCTS } from "@/data/products";
+import { resolveProductImage, DEFAULT_PLACEHOLDER_IMAGE } from "./imageUtils";
 
 /**
  * Robust helper to resolve product photo for any order item,
@@ -6,13 +7,13 @@ import { PRODUCTS } from "@/data/products";
  */
 export function getOrderItemImage(item) {
   if (item?.image && typeof item.image === "string" && item.image.trim().length > 0) {
-    return item.image;
+    return resolveProductImage(item.image);
   }
   if (item?.image_url && typeof item.image_url === "string" && item.image_url.trim().length > 0) {
-    return item.image_url;
+    return resolveProductImage(item.image_url);
   }
   if (item?.referencePhotoUrl && typeof item.referencePhotoUrl === "string" && item.referencePhotoUrl.trim().length > 0) {
-    return item.referencePhotoUrl;
+    return resolveProductImage(item.referencePhotoUrl);
   }
 
   // Lookup in master catalog by slug, id, sku, or name
@@ -28,9 +29,11 @@ export function getOrderItemImage(item) {
   });
 
   if (found) {
-    return found.image_url || (found.images && found.images[0]) || "/images/products/fullbody-figurine-hero.jpeg";
+    return resolveProductImage(
+      found.image_url || (found.images && found.images[0]) || DEFAULT_PLACEHOLDER_IMAGE
+    );
   }
 
-  return "/images/products/fullbody-figurine-hero.jpeg";
+  return DEFAULT_PLACEHOLDER_IMAGE;
 }
 

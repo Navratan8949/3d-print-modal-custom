@@ -1,4 +1,6 @@
 const Product = require("../models/Product");
+const path = require("path");
+const fs = require("fs");
 
 // Helper to create slug from title
 const createSlug = (text) => {
@@ -215,13 +217,28 @@ exports.createProduct = async (req, res) => {
 
     // Collect uploaded image paths if any
     let images = [];
-    if (req.files && req.files.length > 0) {
-      images = req.files.map((file) => `/uploads/products/${file.filename}`);
-    } else if (req.body.images) {
-      images = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
+    if (req.body.existingImages) {
+      try {
+        const parsed =
+          typeof req.body.existingImages === "string"
+            ? JSON.parse(req.body.existingImages)
+            : req.body.existingImages;
+        if (Array.isArray(parsed)) images.push(...parsed);
+      } catch (e) {
+        console.warn("Could not parse existingImages in createProduct:", e.message);
+      }
     }
+    if (req.files && req.files.length > 0) {
+      const fileUrls = req.files.map((file) => `/uploads/products/${file.filename}`);
+      images.push(...fileUrls);
+    } else if (req.body.images) {
+      const bodyImages = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
+      images.push(...bodyImages);
+    }
+    images = images.filter((v, i, a) => a.indexOf(v) === i && v);
 
-    const image_url = images.length > 0 ? images[0] : (req.body.image_url || "/images/products/placeholder.jpeg");
+    const image_url =
+      images.length > 0 ? images[0] : req.body.image_url || "/images/products/placeholder.jpeg";
 
     // Parse options & specifications if sent as strings (e.g. from multipart formData)
     let availableOptions = {};
@@ -327,13 +344,38 @@ exports.updateProduct = async (req, res) => {
       updateData.is_featured = updateData.is_featured === "true" || updateData.is_featured === true;
     }
 
+    // Handle existing images if provided (supports reordering or removing images)
+    let currentImages = product.images || [];
+    if (updateData.existingImages !== undefined) {
+      try {
+        currentImages =
+          typeof updateData.existingImages === "string"
+            ? JSON.parse(updateData.existingImages)
+            : updateData.existingImages;
+        if (!Array.isArray(currentImages)) currentImages = [];
+      } catch (e) {
+        console.warn("Could not parse existingImages:", e.message);
+      }
+      delete updateData.existingImages;
+    }
+
     // Append new uploaded images if any
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map((file) => `/uploads/products/${file.filename}`);
-      updateData.images = [...(product.images || []), ...newImages];
-      if (!product.image_url || product.image_url.includes("placeholder")) {
-        updateData.image_url = newImages[0];
+      currentImages = [...currentImages, ...newImages];
+    }
+
+    updateData.images = currentImages;
+    if (currentImages.length > 0) {
+      if (
+        !product.image_url ||
+        !currentImages.includes(product.image_url) ||
+        product.image_url.includes("placeholder")
+      ) {
+        updateData.image_url = currentImages[0];
       }
+    } else if (!updateData.image_url) {
+      updateData.image_url = "/images/products/placeholder.jpeg";
     }
 
     Object.assign(product, updateData);
@@ -442,6 +484,111 @@ exports.toggleShowInSlider = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to toggle slider status",
+    });
+  }
+};
+
+// ==========================================
+// DELETE PRODUCT IMAGE (ADMIN)
+// ==========================================
+exports.deleteProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "imageUrl is required",
+      });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Filter out the image from images array
+    product.images = (product.images || []).filter((img) => img !== imageUrl);
+
+    // If the deleted image was the primary image_url, update image_url
+    if (product.image_url === imageUrl) {
+      product.image_url =
+        product.images.length > 0 ? product.images[0] : "/images/products/placeholder.jpeg";
+    }
+
+    await product.save();
+
+    // Optionally try to delete file from disk if local upload
+    if (typeof imageUrl === "string" && imageUrl.startsWith("/uploads/")) {
+      const filePath = path.join(__dirname, "..", "..", imageUrl);
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== "ENOENT") {
+          console.warn("Could not delete file from disk:", filePath, err.message);
+        }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Image deleted successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("Delete product image error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete product image",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// SET PRIMARY PRODUCT IMAGE (ADMIN)
+// ==========================================
+exports.setPrimaryProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "imageUrl is required",
+      });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    product.image_url = imageUrl;
+
+    // Ensure image is at the first position in images array
+    const otherImages = (product.images || []).filter((img) => img !== imageUrl);
+    product.images = [imageUrl, ...otherImages];
+
+    await product.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Primary image updated successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("Set primary image error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to set primary image",
+      error: error.message,
     });
   }
 };

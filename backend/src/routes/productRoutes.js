@@ -8,6 +8,8 @@ const {
   deleteProduct,
   toggleFeatured,
   toggleShowInSlider,
+  deleteProductImage,
+  setPrimaryProductImage,
 } = require("../controllers/productController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
@@ -56,6 +58,20 @@ router.patch(
   authMiddleware,
   roleMiddleware("admin", "super_admin"),
   toggleShowInSlider
+);
+
+router.delete(
+  "/:id/images",
+  authMiddleware,
+  roleMiddleware("admin", "super_admin"),
+  deleteProductImage
+);
+
+router.patch(
+  "/:id/primary-image",
+  authMiddleware,
+  roleMiddleware("admin", "super_admin"),
+  setPrimaryProductImage
 );
 
 module.exports = router;
