@@ -6,7 +6,7 @@ import { Search, X, SlidersHorizontal, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
 import ProductGrid from "@/components/products/ProductGrid";
 import { CATEGORIES } from "@/data/categories";
-import { productsAPI } from "@/lib/api";
+import { productsAPI, categoriesAPI } from "@/lib/api";
 
 function ShopContent() {
   const searchParams = useSearchParams();
@@ -15,7 +15,19 @@ function ShopContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
   const [productsList, setProductsList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState(CATEGORIES);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    categoriesAPI
+      .getAll()
+      .then((res) => {
+        if (res && res.categories && res.categories.length > 0) {
+          setCategoriesList(res.categories);
+        }
+      })
+      .catch((e) => console.warn("Using default categories:", e.message));
+  }, []);
 
   useEffect(() => {
     if (categoryParam) {
@@ -173,12 +185,12 @@ function ShopContent() {
           >
             All Products ({productsList.length})
           </button>
-          {CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.slug;
+          {categoriesList.map((cat) => {
+            const isSelected = selectedCategory === (cat.slug || cat.id);
             return (
               <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.slug)}
+                key={cat.id || cat.slug}
+                onClick={() => setSelectedCategory(cat.slug || cat.id)}
                 className={`px-4 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
                   isSelected
                     ? "bg-amber-600 text-white shadow-xs"

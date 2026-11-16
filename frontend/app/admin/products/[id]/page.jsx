@@ -21,7 +21,7 @@ import {
   Weight,
   Plus,
 } from "lucide-react";
-import { productsAPI } from "@/lib/api";
+import { productsAPI, categoriesAPI } from "@/lib/api";
 import { CATEGORIES } from "@/data/categories";
 import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
@@ -54,11 +54,24 @@ export default function AdminProductDetailPage({ params }) {
     status: "active",
   });
 
+  const [categories, setCategories] = useState(CATEGORIES);
   const [newImageFiles, setNewImageFiles] = useState([]);
 
   useEffect(() => {
     fetchProduct();
+    loadCategories();
   }, [id]);
+
+  const loadCategories = async () => {
+    try {
+      const res = await categoriesAPI.getAll();
+      if (res && res.categories && res.categories.length > 0) {
+        setCategories(res.categories);
+      }
+    } catch (err) {
+      console.warn("Using fallback categories:", err.message);
+    }
+  };
 
   const fetchProduct = async () => {
     setLoading(true);
@@ -96,11 +109,11 @@ export default function AdminProductDetailPage({ params }) {
   };
 
   const handleCategoryChange = (e) => {
-    const selectedCat = CATEGORIES.find((c) => c.name === e.target.value);
+    const selectedCat = categories.find((c) => c.name === e.target.value);
     setForm((prev) => ({
       ...prev,
       category: e.target.value,
-      categoryId: selectedCat ? selectedCat.id : e.target.value.toLowerCase().replace(/\s+/g, "-"),
+      categoryId: selectedCat ? (selectedCat.slug || selectedCat.id) : e.target.value.toLowerCase().replace(/\s+/g, "-"),
     }));
   };
 
@@ -357,8 +370,8 @@ export default function AdminProductDetailPage({ params }) {
                   onChange={handleCategoryChange}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
                 >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.name}>
+                  {categories.map((cat) => (
+                    <option key={cat.id || cat.slug} value={cat.name}>
                       {cat.name}
                     </option>
                   ))}

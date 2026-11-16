@@ -18,10 +18,14 @@ import {
   FileText,
   ShieldCheck,
   Loader2,
+  CreditCard,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { ordersAPI } from "@/lib/api";
+import { ordersAPI, paymentAPI } from "@/lib/api";
+import { loadRazorpayScript } from "@/lib/razorpay";
 import { getOrderItemImage } from "@/lib/orderImages";
 import CartItem from "@/components/cart/CartItem";
 import SectionHeading from "@/components/common/SectionHeading";
@@ -52,10 +56,15 @@ export default function CartPage() {
     notes: "",
   });
 
-  // Touched state for field validation
+  // Payment Method: "razorpay" (online payment) or "whatsapp" (manual inquiry)
+  const [paymentMethod, setPaymentMethod] = useState("razorpay");
+
+  // Status & Validation States
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentStatusText, setPaymentStatusText] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [orderPlaced, setOrderPlaced] = useState(null);
   const [allowGuest, setAllowGuest] = useState(false);
 
@@ -75,6 +84,12 @@ export default function CartPage() {
   }, [user]);
 
   const hasPhotoItems = cart.some((item) => item.hasPhoto);
+
+  // Calculate cart subtotal
+  const subtotal = cart.reduce(
+    (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+    0
+  );
 
   // Field validation rules
   const validateField = (name, value) => {
@@ -125,7 +140,14 @@ export default function CartPage() {
     pincode: validateField("pincode", formData.pincode),
   };
 
-  const isFormValid = !errors.name && !errors.phone && !errors.email && !errors.address && !errors.city && !errors.state && !errors.pincode;
+  const isFormValid =
+    !errors.name &&
+    !errors.phone &&
+    !errors.email &&
+    !errors.address &&
+    !errors.city &&
+    !errors.state &&
+    !errors.pincode;
 
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -135,9 +157,168 @@ export default function CartPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleWhatsAppOrder = async (e) => {
-    e.preventDefault();
+  // ========================================================
+  // 1. ONLINE PAYMENT HANDLER (RAZORPAY)
+  // ========================================================
+  const handleRazorpayPayment = async () => {
     setSubmitAttempted(true);
+    setErrorMessage("");
+    setTouched({
+      name: true,
+      phone: true,
+      email: true,
+      address: true,
+      city: true,
+      state: true,
+      pincode: true,
+    });
+
+    if (!isFormValid) {
+      const firstErrorField = ["name", "phone", "address", "city", "pincode"].find((f) => errors[f]);
+      if (firstErrorField) {
+        const el = document.getElementById(`field-${firstErrorField}`);
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      return;
+    }
+
+    setSubmitting(true);
+    setPaymentStatusText("Connecting to secure payment gateway...");
+
+    try {
+      // 1. Load Razorpay Checkout Script
+      const scriptReady = await loadRazorpayScript();
+      if (!scriptReady) {
+        throw new Error("Razorpay payment gateway failed to load. Please verify your internet connection.");
+      }
+
+      setPaymentStatusText("Preparing order and payment invoice...");
+
+      // 2. Prepare payload
+      const orderPayload = {
+        customer: {
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+          state: formData.state.trim(),
+          pincode: formData.pincode.trim(),
+          notes: formData.notes.trim(),
+        },
+        items: cart.map((item) => ({
+          productId: String(item.id || item.sku || ""),
+          name: item.name,
+          slug: item.slug || "",
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 1,
+          image: getOrderItemImage(item),
+          customization: item.customization || {},
+          hasPhoto: Boolean(item.hasPhoto),
+        })),
+        totalAmount: subtotal,
+      };
+
+      // 3. Request backend to create Order & Razorpay Order
+      const res = await paymentAPI.createOrder(orderPayload);
+      if (!res.success || !res.razorpayOrderId) {
+        throw new Error(res.message || "Failed to initialize Razorpay order.");
+      }
+
+      setPaymentStatusText("Waiting for payment authorization...");
+
+      const razorpayKey = res.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
+      // 4. Open Razorpay modal
+      const options = {
+        key: razorpayKey,
+        amount: res.amount,
+        currency: res.currency || "INR",
+        name: "Prime 3D Printing Lab",
+        description: `Order #${res.orderNumber}`,
+        image: "/logo.png",
+        order_id: res.razorpayOrderId,
+        handler: async function (response) {
+          try {
+            setSubmitting(true);
+            setPaymentStatusText("Verifying payment with bank & Razorpay...");
+
+            // 5. Send signatures to backend for HMAC verification
+            const verifyRes = await paymentAPI.verifyPayment({
+              orderId: res.orderId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (verifyRes.success && verifyRes.order) {
+              clearCart();
+              setOrderPlaced(verifyRes.order);
+            } else {
+              setErrorMessage(verifyRes.message || "Payment verification failed. Please contact studio support.");
+            }
+          } catch (verifyErr) {
+            console.warn("Payment verification notice:", verifyErr?.message || verifyErr);
+            setErrorMessage("Payment verification failed: " + (verifyErr?.message || "Please contact studio support."));
+          } finally {
+            setSubmitting(false);
+            setPaymentStatusText("");
+          }
+        },
+        prefill: {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          contact: formData.phone.trim(),
+        },
+        notes: {
+          orderNumber: res.orderNumber,
+          customerCity: formData.city.trim(),
+        },
+        theme: {
+          color: "#d97706",
+        },
+        modal: {
+          ondismiss: function () {
+            setSubmitting(false);
+            setPaymentStatusText("");
+            setErrorMessage("Payment was not completed. You can try again or order directly via WhatsApp.");
+          },
+        },
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.on("payment.failed", function (response) {
+        const errorDetails = response?.error || {};
+        const reason =
+          errorDetails.description ||
+          errorDetails.reason ||
+          (errorDetails.code ? `Code: ${errorDetails.code}` : null) ||
+          "Payment was declined or cancelled by bank.";
+
+        console.warn("Razorpay Payment Notice:", reason);
+        setErrorMessage(`Payment not completed: ${reason} You can try again or order directly via WhatsApp.`);
+        setSubmitting(false);
+        setPaymentStatusText("");
+      });
+
+      rzpInstance.open();
+    } catch (err) {
+      console.warn("Razorpay flow notice:", err?.message || err);
+      setErrorMessage(err?.message || "Unable to proceed with payment. Please try again.");
+      setSubmitting(false);
+      setPaymentStatusText("");
+    }
+  };
+
+  // ========================================================
+  // 2. WHATSAPP INQUIRY ORDER HANDLER
+  // ========================================================
+  const handleWhatsAppOrder = async () => {
+    setSubmitAttempted(true);
+    setErrorMessage("");
     setTouched({
       name: true,
       phone: true,
@@ -189,16 +370,18 @@ export default function CartPage() {
       const res = await ordersAPI.create(orderPayload);
       clearCart();
 
-      const targetUrl = res?.whatsappUrl || getCartWhatsAppUrl({
-        name: formData.name.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        state: formData.state.trim(),
-        pincode: formData.pincode.trim(),
-        notes: formData.notes.trim(),
-      });
+      const targetUrl =
+        res?.whatsappUrl ||
+        getCartWhatsAppUrl({
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+          state: formData.state.trim(),
+          pincode: formData.pincode.trim(),
+          notes: formData.notes.trim(),
+        });
 
       window.open(targetUrl, "_blank", "noopener,noreferrer");
       setOrderPlaced(res.order || { orderNumber: "P3D-SUCCESS", ...orderPayload });
@@ -221,23 +404,41 @@ export default function CartPage() {
     }
   };
 
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (paymentMethod === "razorpay") {
+      handleRazorpayPayment();
+    } else {
+      handleWhatsAppOrder();
+    }
+  };
+
   const isFieldError = (field) => (touched[field] || submitAttempted) && Boolean(errors[field]);
   const isFieldValid = (field) => touched[field] && !errors[field] && Boolean(formData[field]?.trim());
 
+  // ========================================================
+  // SUCCESS SCREEN
+  // ========================================================
   if (orderPlaced) {
+    const isPaidOnline = orderPlaced.paymentStatus === "paid";
+
     return (
       <div className="py-16 sm:py-24 max-w-2xl mx-auto px-4 text-center space-y-6">
         <div className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-10 shadow-sm space-y-6">
-          <div className="w-20 h-20 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
           <div className="space-y-2">
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-50 text-amber-800">
-              Order Confirmed & Logged
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                isPaidOnline ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-amber-50 text-amber-800"
+              }`}
+            >
+              {isPaidOnline ? "Payment Verified • Order Confirmed" : "Order Confirmed & Logged"}
             </span>
             <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
-              Thank You For Your Order!
+              {isPaidOnline ? "Thank You! Payment Received 🎉" : "Thank You For Your Order!"}
             </h2>
             <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto">
               Your order has been registered in our database with Order ID{" "}
@@ -249,27 +450,42 @@ export default function CartPage() {
           <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 text-left text-xs space-y-2">
             <div className="flex justify-between pb-2 border-b border-stone-200">
               <span className="text-stone-500">Customer:</span>
-              <span className="font-semibold text-stone-900">{orderPlaced.customer?.name} ({orderPlaced.customer?.phone})</span>
+              <span className="font-semibold text-stone-900">
+                {orderPlaced.customer?.name} ({orderPlaced.customer?.phone})
+              </span>
             </div>
             <div className="flex justify-between pb-2 border-b border-stone-200">
               <span className="text-stone-500">Delivery To:</span>
-              <span className="font-semibold text-stone-900 text-right">{orderPlaced.customer?.city}, {orderPlaced.customer?.state}</span>
+              <span className="font-semibold text-stone-900 text-right">
+                {orderPlaced.customer?.city}, {orderPlaced.customer?.state} - {orderPlaced.customer?.pincode}
+              </span>
             </div>
+            {orderPlaced.razorpayPaymentId && (
+              <div className="flex justify-between pb-2 border-b border-stone-200">
+                <span className="text-stone-500">Payment Reference:</span>
+                <span className="font-mono font-semibold text-emerald-700">{orderPlaced.razorpayPaymentId}</span>
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-stone-500">Total Estimate:</span>
+              <span className="text-stone-500">Total Amount:</span>
               <span className="font-bold text-amber-700 text-sm">₹{orderPlaced.totalAmount}</span>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <a
-              href={orderPlaced.whatsappUrl || `https://wa.me/916376145171?text=${encodeURIComponent(`Hello Prime3D! Order #${orderPlaced.orderNumber}`)}`}
+              href={
+                orderPlaced.whatsappUrl ||
+                `https://wa.me/916376145171?text=${encodeURIComponent(
+                  `Hello Prime3D! Inquiring about Order #${orderPlaced.orderNumber} (Paid: ₹${orderPlaced.totalAmount})`
+                )}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-sm"
             >
               <MessageCircle className="w-4 h-4 fill-current" />
-              <span>Open WhatsApp Chat</span>
+              <span>Connect on WhatsApp</span>
             </a>
 
             <Link
@@ -290,7 +506,7 @@ export default function CartPage() {
       <SectionHeading
         eyebrow="Order Review & Checkout"
         title="Your 3D Printing Bag"
-        description="Verify your customized items, fill in your delivery details with accurate phone & address, and place your order directly via WhatsApp."
+        description="Verify your customized items, fill in your delivery details, and pay securely via Razorpay (UPI / Cards) or place an inquiry via WhatsApp."
       />
 
       {!isLoaded ? (
@@ -365,7 +581,7 @@ export default function CartPage() {
                 <div className="space-y-1">
                   <span className="font-semibold block">Photo Figurine Included:</span>
                   <p className="text-stone-700 leading-relaxed">
-                    Once WhatsApp opens with your order details, please attach your original, clear photographs directly into the WhatsApp chat so our 3D sculpting artists can start modeling immediately.
+                    For custom figurines, you can pay directly online and upload/share your photos with our sculpting artists on WhatsApp with your Order ID for precision handcrafting.
                   </p>
                 </div>
               </div>
@@ -423,7 +639,7 @@ export default function CartPage() {
                     onClick={() => setAllowGuest(true)}
                     className="text-xs text-stone-500 hover:text-stone-800 underline font-medium transition-colors"
                   >
-                    Or continue as Guest (Direct WhatsApp Order)
+                    Or continue as Guest (Instant Checkout)
                   </button>
                 </div>
               </div>
@@ -466,306 +682,415 @@ export default function CartPage() {
                   </p>
                 </div>
 
-                <form onSubmit={handleWhatsAppOrder} noValidate className="space-y-4">
-                {/* 1. Full Name */}
-                <div>
-                  <label
-                    htmlFor="field-name"
-                    className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
-                  >
-                    <span>Full Name <span className="text-red-600">*</span></span>
-                    {isFieldValid("name") && (
-                      <span className="text-[11px] text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Valid
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      id="field-name"
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => handleChange("name", e.target.value)}
-                      onBlur={() => handleBlur("name")}
-                      placeholder="e.g. Rahul Sharma"
-                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
-                        isFieldError("name")
-                          ? "border-red-500 focus:border-red-600 bg-red-50/20"
-                          : "border-stone-200 focus:border-amber-600 focus:bg-white"
-                      }`}
-                    />
-                  </div>
-                  {isFieldError("name") && (
-                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      <span>{errors.name}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* 2. Phone / WhatsApp Number */}
-                <div>
-                  <label
-                    htmlFor="field-phone"
-                    className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
-                  >
-                    <span>WhatsApp / Mobile Number <span className="text-red-600">*</span></span>
-                    {isFieldValid("phone") && (
-                      <span className="text-[11px] text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Valid
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <span className="absolute left-10 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-500 border-r border-stone-300 pr-2 pointer-events-none">
-                      +91
-                    </span>
-                    <input
-                      id="field-phone"
-                      type="tel"
-                      maxLength={10}
-                      value={formData.phone}
-                      onChange={(e) => handleChange("phone", e.target.value.replace(/\D/g, ""))}
-                      onBlur={() => handleBlur("phone")}
-                      placeholder="10 digit mobile number"
-                      className={`w-full pl-22 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors font-medium tabular-nums ${
-                        isFieldError("phone")
-                          ? "border-red-500 focus:border-red-600 bg-red-50/20"
-                          : "border-stone-200 focus:border-amber-600 focus:bg-white"
-                      }`}
-                    />
-                  </div>
-                  {isFieldError("phone") && (
-                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      <span>{errors.phone}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* 3. Email (Optional) */}
-                <div>
-                  <label
-                    htmlFor="field-email"
-                    className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
-                  >
-                    <span>Email Address <span className="text-stone-400 font-normal">(Optional for invoice)</span></span>
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      id="field-email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleChange("email", e.target.value)}
-                      onBlur={() => handleBlur("email")}
-                      placeholder="e.g. rahul@example.com"
-                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
-                        isFieldError("email")
-                          ? "border-red-500 focus:border-red-600 bg-red-50/20"
-                          : "border-stone-200 focus:border-amber-600 focus:bg-white"
-                      }`}
-                    />
-                  </div>
-                  {isFieldError("email") && (
-                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      <span>{errors.email}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* 4. Complete Delivery Address */}
-                <div>
-                  <label
-                    htmlFor="field-address"
-                    className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
-                  >
-                    <span>Complete Delivery Address <span className="text-red-600">*</span></span>
-                    {isFieldValid("address") && (
-                      <span className="text-[11px] text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Valid
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <MapPin className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
-                    <textarea
-                      id="field-address"
-                      rows={2}
-                      value={formData.address}
-                      onChange={(e) => handleChange("address", e.target.value)}
-                      onBlur={() => handleBlur("address")}
-                      placeholder="House / Flat No., Building, Street Name, Landmark"
-                      className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
-                        isFieldError("address")
-                          ? "border-red-500 focus:border-red-600 bg-red-50/20"
-                          : "border-stone-200 focus:border-amber-600 focus:bg-white"
-                      }`}
-                    />
-                  </div>
-                  {isFieldError("address") && (
-                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      <span>{errors.address}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* 5. City, State & Pincode Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* City */}
+                <form onSubmit={handleFormSubmit} noValidate className="space-y-4">
+                  {/* 1. Full Name */}
                   <div>
                     <label
-                      htmlFor="field-city"
-                      className="text-xs font-semibold text-stone-800 block mb-1"
+                      htmlFor="field-name"
+                      className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
                     >
-                      City <span className="text-red-600">*</span>
+                      <span>
+                        Full Name <span className="text-red-600">*</span>
+                      </span>
+                      {isFieldValid("name") && (
+                        <span className="text-[11px] text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Valid
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
-                      <Building className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <User className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
-                        id="field-city"
+                        id="field-name"
                         type="text"
-                        value={formData.city}
-                        onChange={(e) => handleChange("city", e.target.value)}
-                        onBlur={() => handleBlur("city")}
-                        placeholder="e.g. Jaipur"
-                        className={`w-full pl-8.5 pr-2.5 py-2 text-xs bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
-                          isFieldError("city")
-                            ? "border-red-500 bg-red-50/20"
+                        value={formData.name}
+                        onChange={(e) => handleChange("name", e.target.value)}
+                        onBlur={() => handleBlur("name")}
+                        placeholder="e.g. Rahul Sharma"
+                        className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
+                          isFieldError("name")
+                            ? "border-red-500 focus:border-red-600 bg-red-50/20"
                             : "border-stone-200 focus:border-amber-600 focus:bg-white"
                         }`}
                       />
                     </div>
-                    {isFieldError("city") && (
-                      <p className="text-[10px] text-red-600 mt-0.5">{errors.city}</p>
+                    {isFieldError("name") && (
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{errors.name}</span>
+                      </p>
                     )}
                   </div>
 
-                  {/* State */}
+                  {/* 2. Phone / WhatsApp Number */}
                   <div>
                     <label
-                      htmlFor="field-state"
-                      className="text-xs font-semibold text-stone-800 block mb-1"
+                      htmlFor="field-phone"
+                      className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
                     >
-                      State <span className="text-red-600">*</span>
-                    </label>
-                    <select
-                      id="field-state"
-                      value={formData.state}
-                      onChange={(e) => handleChange("state", e.target.value)}
-                      className="w-full px-2.5 py-2 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-600 focus:bg-white transition-colors"
-                    >
-                      {INDIAN_STATES.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Pincode */}
-                  <div>
-                    <label
-                      htmlFor="field-pincode"
-                      className="text-xs font-semibold text-stone-800 block mb-1"
-                    >
-                      PIN Code <span className="text-red-600">*</span>
+                      <span>
+                        WhatsApp / Mobile Number <span className="text-red-600">*</span>
+                      </span>
+                      {isFieldValid("phone") && (
+                        <span className="text-[11px] text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Valid
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
-                      <Navigation className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Phone className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <span className="absolute left-10 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-500 border-r border-stone-300 pr-2 pointer-events-none">
+                        +91
+                      </span>
                       <input
-                        id="field-pincode"
-                        type="text"
-                        maxLength={6}
-                        value={formData.pincode}
-                        onChange={(e) => handleChange("pincode", e.target.value.replace(/\D/g, ""))}
-                        onBlur={() => handleBlur("pincode")}
-                        placeholder="6 digits"
-                        className={`w-full pl-8.5 pr-2.5 py-2 text-xs bg-stone-50 border rounded-xl focus:outline-none transition-colors tabular-nums ${
-                          isFieldError("pincode")
-                            ? "border-red-500 bg-red-50/20"
+                        id="field-phone"
+                        type="tel"
+                        maxLength={10}
+                        value={formData.phone}
+                        onChange={(e) => handleChange("phone", e.target.value.replace(/\D/g, ""))}
+                        onBlur={() => handleBlur("phone")}
+                        placeholder="10 digit mobile number"
+                        className={`w-full pl-22 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors font-medium tabular-nums ${
+                          isFieldError("phone")
+                            ? "border-red-500 focus:border-red-600 bg-red-50/20"
                             : "border-stone-200 focus:border-amber-600 focus:bg-white"
                         }`}
                       />
                     </div>
-                    {isFieldError("pincode") && (
-                      <p className="text-[10px] text-red-600 mt-0.5">{errors.pincode}</p>
+                    {isFieldError("phone") && (
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{errors.phone}</span>
+                      </p>
                     )}
                   </div>
-                </div>
 
-                {/* 6. Order Instructions / Target Date */}
-                <div>
-                  <label
-                    htmlFor="field-notes"
-                    className="text-xs font-semibold text-stone-800 block mb-1"
-                  >
-                    Order Instructions / Required By Date <span className="text-stone-400 font-normal">(Optional)</span>
-                  </label>
-                  <div className="relative">
-                    <FileText className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
-                    <textarea
-                      id="field-notes"
-                      rows={2}
-                      value={formData.notes}
-                      onChange={(e) => handleChange("notes", e.target.value)}
-                      placeholder="e.g. Birthday gift, need before 15th November. Please gift wrap."
-                      className="w-full pl-10 pr-3.5 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-600 focus:bg-white transition-colors"
-                    />
-                  </div>
-                </div>
-
-                {/* Order Summary Strip */}
-                <div className="pt-4 border-t border-stone-100 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-stone-600">
-                    <span>Order Items Count</span>
-                    <span className="font-bold text-stone-900">{totalItemCount} Units</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-stone-600">
-                    <span>Payment & Pricing</span>
-                    <span className="font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md">
-                      Verified Custom Quote via WhatsApp
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[11px] text-stone-500 pt-1">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Safe direct chat with Prime3D studio team. No hidden charges.</span>
+                  {/* 3. Email (Optional) */}
+                  <div>
+                    <label
+                      htmlFor="field-email"
+                      className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
+                    >
+                      <span>
+                        Email Address{" "}
+                        <span className="text-stone-400 font-normal">(Optional for Razorpay receipt & invoice)</span>
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        id="field-email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleChange("email", e.target.value)}
+                        onBlur={() => handleBlur("email")}
+                        placeholder="e.g. rahul@example.com"
+                        className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
+                          isFieldError("email")
+                            ? "border-red-500 focus:border-red-600 bg-red-50/20"
+                            : "border-stone-200 focus:border-amber-600 focus:bg-white"
+                        }`}
+                      />
+                    </div>
+                    {isFieldError("email") && (
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{errors.email}</span>
+                      </p>
+                    )}
                   </div>
 
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-75"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Logging Order & Opening WhatsApp...</span>
-                      </>
+                  {/* 4. Complete Delivery Address */}
+                  <div>
+                    <label
+                      htmlFor="field-address"
+                      className="text-xs font-semibold text-stone-800 flex items-center justify-between mb-1"
+                    >
+                      <span>
+                        Complete Delivery Address <span className="text-red-600">*</span>
+                      </span>
+                      {isFieldValid("address") && (
+                        <span className="text-[11px] text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Valid
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
+                      <textarea
+                        id="field-address"
+                        rows={2}
+                        value={formData.address}
+                        onChange={(e) => handleChange("address", e.target.value)}
+                        onBlur={() => handleBlur("address")}
+                        placeholder="House / Flat No., Building, Street Name, Landmark"
+                        className={`w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
+                          isFieldError("address")
+                            ? "border-red-500 focus:border-red-600 bg-red-50/20"
+                            : "border-stone-200 focus:border-amber-600 focus:bg-white"
+                        }`}
+                      />
+                    </div>
+                    {isFieldError("address") && (
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{errors.address}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 5. City, State & Pincode Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* City */}
+                    <div>
+                      <label htmlFor="field-city" className="text-xs font-semibold text-stone-800 block mb-1">
+                        City <span className="text-red-600">*</span>
+                      </label>
+                      <div className="relative">
+                        <Building className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          id="field-city"
+                          type="text"
+                          value={formData.city}
+                          onChange={(e) => handleChange("city", e.target.value)}
+                          onBlur={() => handleBlur("city")}
+                          placeholder="e.g. Jaipur"
+                          className={`w-full pl-8.5 pr-2.5 py-2 text-xs bg-stone-50 border rounded-xl focus:outline-none transition-colors ${
+                            isFieldError("city")
+                              ? "border-red-500 bg-red-50/20"
+                              : "border-stone-200 focus:border-amber-600 focus:bg-white"
+                          }`}
+                        />
+                      </div>
+                      {isFieldError("city") && <p className="text-[10px] text-red-600 mt-0.5">{errors.city}</p>}
+                    </div>
+
+                    {/* State */}
+                    <div>
+                      <label htmlFor="field-state" className="text-xs font-semibold text-stone-800 block mb-1">
+                        State <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        id="field-state"
+                        value={formData.state}
+                        onChange={(e) => handleChange("state", e.target.value)}
+                        className="w-full px-2.5 py-2 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-600 focus:bg-white transition-colors"
+                      >
+                        {INDIAN_STATES.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Pincode */}
+                    <div>
+                      <label htmlFor="field-pincode" className="text-xs font-semibold text-stone-800 block mb-1">
+                        PIN Code <span className="text-red-600">*</span>
+                      </label>
+                      <div className="relative">
+                        <Navigation className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          id="field-pincode"
+                          type="text"
+                          maxLength={6}
+                          value={formData.pincode}
+                          onChange={(e) => handleChange("pincode", e.target.value.replace(/\D/g, ""))}
+                          onBlur={() => handleBlur("pincode")}
+                          placeholder="6 digits"
+                          className={`w-full pl-8.5 pr-2.5 py-2 text-xs bg-stone-50 border rounded-xl focus:outline-none transition-colors tabular-nums ${
+                            isFieldError("pincode")
+                              ? "border-red-500 bg-red-50/20"
+                              : "border-stone-200 focus:border-amber-600 focus:bg-white"
+                          }`}
+                        />
+                      </div>
+                      {isFieldError("pincode") && (
+                        <p className="text-[10px] text-red-600 mt-0.5">{errors.pincode}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 6. Order Instructions / Target Date */}
+                  <div>
+                    <label htmlFor="field-notes" className="text-xs font-semibold text-stone-800 block mb-1">
+                      Order Instructions / Required By Date <span className="text-stone-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <FileText className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
+                      <textarea
+                        id="field-notes"
+                        rows={2}
+                        value={formData.notes}
+                        onChange={(e) => handleChange("notes", e.target.value)}
+                        placeholder="e.g. Birthday gift, need before 25th November. Please gift wrap."
+                        className="w-full pl-10 pr-3.5 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-600 focus:bg-white transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ======================================================== */}
+                  {/* 7. PAYMENT METHOD SELECTOR */}
+                  {/* ======================================================== */}
+                  <div className="space-y-2 pt-2 border-t border-stone-100">
+                    <label className="text-xs font-semibold text-stone-800 flex items-center justify-between">
+                      <span>Choose Payment Mode <span className="text-red-600">*</span></span>
+                      <span className="text-[11px] text-stone-400 font-normal">Safe & Encrypted 256-bit</span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Razorpay Online */}
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("razorpay")}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          paymentMethod === "razorpay"
+                            ? "border-amber-600 bg-amber-50/70 shadow-xs ring-1 ring-amber-500/30"
+                            : "border-stone-200 hover:border-stone-300 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                paymentMethod === "razorpay" ? "border-amber-600" : "border-stone-300"
+                              }`}
+                            >
+                              {paymentMethod === "razorpay" && (
+                                <div className="w-2 h-2 rounded-full bg-amber-600" />
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-stone-900">Pay Online</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                            Instant Verified
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-2 pl-6 leading-relaxed">
+                          UPI (GPay, PhonePe, Paytm), Debit/Credit Cards & NetBanking via Razorpay.
+                        </p>
+                      </button>
+
+                      {/* WhatsApp Order */}
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("whatsapp")}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          paymentMethod === "whatsapp"
+                            ? "border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500/30"
+                            : "border-stone-200 hover:border-stone-300 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                paymentMethod === "whatsapp" ? "border-emerald-600" : "border-stone-300"
+                              }`}
+                            >
+                              {paymentMethod === "whatsapp" && (
+                                <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-stone-900">WhatsApp Order</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
+                            Manual Chat
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-2 pl-6 leading-relaxed">
+                          Confirm specs directly with our studio artists on WhatsApp and pay later.
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Order Summary Strip */}
+                  <div className="pt-4 border-t border-stone-100 space-y-3">
+                    <div className="flex items-center justify-between text-xs text-stone-600">
+                      <span>Order Items Count</span>
+                      <span className="font-bold text-stone-900">{totalItemCount} Units</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-stone-600">
+                      <span>Items Subtotal</span>
+                      <span className="font-semibold text-stone-900">₹{subtotal}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-stone-600">
+                      <span>Standard Express Shipping</span>
+                      <span className="font-semibold text-emerald-700">Free</span>
+                    </div>
+
+                    <div className="pt-2 border-t border-stone-200/80 flex items-center justify-between">
+                      <span className="font-bold text-sm text-stone-900">Total Payable Amount</span>
+                      <span className="font-serif font-bold text-lg text-amber-900">₹{subtotal}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-stone-500 pt-1">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        {paymentMethod === "razorpay"
+                          ? "Secured by Razorpay. 100% Buyer Protection & Instant confirmation."
+                          : "Safe direct chat with Prime3D studio team. No hidden charges."}
+                      </span>
+                    </div>
+
+                    {/* Submit Button */}
+                    {paymentMethod === "razorpay" ? (
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-75"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>{paymentStatusText || "Connecting to Razorpay..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4" />
+                            <span>Pay ₹{subtotal} with Razorpay</span>
+                          </>
+                        )}
+                      </button>
                     ) : (
-                      <>
-                        <MessageCircle className="w-4 h-4 fill-current" />
-                        <span>Confirm & Send Order on WhatsApp</span>
-                      </>
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-75"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>Logging Order & Opening WhatsApp...</span>
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="w-4 h-4 fill-current" />
+                            <span>Confirm & Send Order on WhatsApp</span>
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
 
-                  {submitAttempted && !isFormValid && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                      <span>Please correct the highlighted fields above to proceed.</span>
-                    </div>
-                  )}
-                </div>
-              </form>
-            </div>
+                    {errorMessage && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2 animate-fade-in">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                        <span>{errorMessage}</span>
+                      </div>
+                    )}
+
+                    {submitAttempted && !isFormValid && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                        <span>Please correct the highlighted delivery fields above to proceed.</span>
+                      </div>
+                    )}
+                  </div>
+                </form>
+              </div>
             )}
           </div>
         </div>

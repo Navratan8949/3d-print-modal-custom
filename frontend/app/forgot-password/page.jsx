@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
           </span>
           <h1 className="text-2xl font-serif font-bold text-stone-900">Forgot Password?</h1>
           <p className="text-xs text-stone-600">
-            Enter your account email and we will send a 6-digit OTP verification code via Nodemailer.
+            Enter your account email and we will send a 6-digit verification code valid for 30 minutes.
           </p>
         </div>
 
