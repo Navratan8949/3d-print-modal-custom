@@ -211,17 +211,25 @@ exports.forgotPassword = async (req, res) => {
 
     user.resetPasswordOtp = otp;
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 mins expiry
+    user.resetPasswordExpires = Date.now() + 30 * 60 * 1000; // 30 mins expiry
     await user.save();
 
-    // Send email using Nodemailer in background (non-blocking)
-    sendInBackground(async () => {
+    // Send email (await to catch real delivery errors instead of false success)
+    try {
       await sendPasswordResetEmail(cleanEmail, otp, resetToken, user.name);
-    }, `Password reset OTP to ${cleanEmail}`);
+    } catch (mailError) {
+      console.error(`[EMAIL ERROR] Failed to send password reset email to ${cleanEmail}:`, mailError.message);
+      return res.status(502).json({
+        success: false,
+        message: mailError.message || "Failed to deliver verification email. Please check email service configuration.",
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Password reset verification code has been sent to your email",
+      message: "Password reset verification code has been sent to your email. Valid for 30 minutes.",
+      expiresInMinutes: 30,
+      expiresAt: user.resetPasswordExpires,
     });
   } catch (error) {
     console.error("Forgot password error:", error);

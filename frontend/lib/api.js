@@ -232,7 +232,7 @@ export const ordersAPI = {
 };
 
 // ==========================================
-// CONTACT API
+// CONTACT / INQUIRIES API
 // ==========================================
 export const contactAPI = {
   submit: async (data) => {
@@ -240,6 +240,61 @@ export const contactAPI = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+
+  getAllAdmin: async (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") {
+        searchParams.append(k, v);
+      }
+    });
+    const qs = searchParams.toString();
+    return request(`/contact/admin/all${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+
+  updateStatus: async (id, data) => {
+    return request(`/contact/admin/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id) => {
+    return request(`/contact/admin/${id}`, { method: "DELETE" });
+  },
+};
+
+export const inquiriesAPI = contactAPI;
+
+// ==========================================
+// CATEGORIES API
+// ==========================================
+export const categoriesAPI = {
+  getAll: async () => {
+    return request("/categories", { method: "GET" });
+  },
+
+  getAllAdmin: async () => {
+    return request("/categories/admin/all", { method: "GET" });
+  },
+
+  create: async (categoryData) => {
+    return request("/categories", {
+      method: "POST",
+      body: JSON.stringify(categoryData),
+    });
+  },
+
+  update: async (id, categoryData) => {
+    return request(`/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(categoryData),
+    });
+  },
+
+  delete: async (id) => {
+    return request(`/categories/${id}`, { method: "DELETE" });
   },
 };
 
@@ -252,11 +307,37 @@ export const dashboardAPI = {
   },
 };
 
+// ==========================================
+// PAYMENT API (RAZORPAY)
+// ==========================================
+export const paymentAPI = {
+  createOrder: async (orderData) => {
+    return request("/payment/create-order", {
+      method: "POST",
+      body: JSON.stringify(orderData),
+    });
+  },
+
+  verifyPayment: async (paymentData) => {
+    return request("/payment/verify", {
+      method: "POST",
+      body: JSON.stringify(paymentData),
+    });
+  },
+
+  getKey: async () => {
+    return request("/payment/key", { method: "GET" });
+  },
+};
+
 export default {
   auth: authAPI,
   products: productsAPI,
   orders: ordersAPI,
+  payment: paymentAPI,
   contact: contactAPI,
+  categories: categoriesAPI,
+  inquiries: inquiriesAPI,
   dashboard: dashboardAPI,
 };
 

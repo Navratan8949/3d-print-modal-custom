@@ -22,7 +22,8 @@ import {
   Camera,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { ordersAPI } from "@/lib/api";
+import { ordersAPI, paymentAPI } from "@/lib/api";
+import { loadRazorpayScript } from "@/lib/razorpay";
 import { getOrderItemImage } from "@/lib/orderImages";
 
 export default function CustomerOrderDetailPage({ params }) {
@@ -33,6 +34,76 @@ export default function CustomerOrderDetailPage({ params }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
+
+  const handlePayNow = async () => {
+    if (!order) return;
+    setPaying(true);
+    setPayError("");
+    try {
+      const scriptReady = await loadRazorpayScript();
+      if (!scriptReady) {
+        throw new Error("Razorpay failed to load. Please check your internet connection.");
+      }
+
+      const res = await paymentAPI.createOrder({ orderId: order._id });
+      if (!res.success || !res.razorpayOrderId) {
+        throw new Error(res.message || "Failed to initialize payment");
+      }
+
+      const razorpayKey = res.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
+      const options = {
+        key: razorpayKey,
+        amount: res.amount,
+        currency: res.currency || "INR",
+        name: "Prime 3D Printing Lab",
+        description: `Order #${order.orderNumber}`,
+        order_id: res.razorpayOrderId,
+        handler: async function (response) {
+          try {
+            const verifyRes = await paymentAPI.verifyPayment({
+              orderId: order._id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            if (verifyRes.success && verifyRes.order) {
+              setOrder(verifyRes.order);
+            }
+          } catch (e) {
+            setPayError(e.message);
+          } finally {
+            setPaying(false);
+          }
+        },
+        prefill: {
+          name: order.customer?.name,
+          email: order.customer?.email,
+          contact: order.customer?.phone,
+        },
+        theme: {
+          color: "#d97706",
+        },
+        modal: {
+          ondismiss: () => setPaying(false),
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (response) {
+        const errObj = response?.error || {};
+        const reason = errObj.description || errObj.reason || "Payment declined or cancelled.";
+        setPayError(`Payment not completed: ${reason}`);
+        setPaying(false);
+      });
+      rzp.open();
+    } catch (e) {
+      setPayError(e?.message || "Could not initialize payment.");
+      setPaying(false);
+    }
+  };
 
   useEffect(() => {
     fetchOrder();
@@ -384,8 +455,8 @@ export default function CustomerOrderDetailPage({ params }) {
           ))}
         </div>
 
-        {/* Pricing Summary Footer */}
-        <div className="p-5 bg-stone-50/70 border-t border-stone-100 space-y-2 text-xs">
+        {/* Pricing & Payment Summary Footer */}
+        <div className="p-5 bg-stone-50/70 border-t border-stone-100 space-y-2.5 text-xs">
           <div className="flex items-center justify-between text-stone-600">
             <span>Items Subtotal</span>
             <span>₹{order.totalAmount}</span>
@@ -398,6 +469,52 @@ export default function CustomerOrderDetailPage({ params }) {
             <span className="font-bold text-sm text-stone-900">Total Order Amount</span>
             <span className="font-serif font-bold text-lg text-stone-900">₹{order.totalAmount}</span>
           </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-stone-100">
+            <span className="text-stone-500 font-medium">Payment Status:</span>
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                order.paymentStatus === "paid"
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : "bg-amber-100 text-amber-800 border border-amber-300"
+              }`}
+            >
+              {order.paymentStatus === "paid" ? "Paid via Razorpay" : order.paymentStatus || "Pending"}
+            </span>
+          </div>
+
+          {order.razorpayPaymentId && (
+            <div className="flex items-center justify-between text-[11px] text-stone-500">
+              <span>Razorpay Payment ID:</span>
+              <span className="font-mono text-stone-800 font-semibold">{order.razorpayPaymentId}</span>
+            </div>
+          )}
+
+          {/* Pay Now Button if payment is pending and order not cancelled */}
+          {order.paymentStatus !== "paid" && order.status !== "cancelled" && (
+            <div className="pt-3">
+              <button
+                type="button"
+                onClick={handlePayNow}
+                disabled={paying}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-sm cursor-pointer disabled:opacity-60"
+              >
+                {paying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Opening Razorpay Gateway...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Pay ₹{order.totalAmount} Online via Razorpay</span>
+                  </>
+                )}
+              </button>
+              {payError && (
+                <p className="text-[11px] text-red-600 mt-2 text-center">{payError}</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

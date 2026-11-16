@@ -3,7 +3,18 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Mail, KeyRound, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import {
+  Mail,
+  KeyRound,
+  Lock,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  ArrowLeft,
+  Clock,
+  RefreshCw,
+} from "lucide-react";
 import { authAPI } from "@/lib/api";
 
 function ResetPasswordForm() {
@@ -20,8 +31,15 @@ function ResetPasswordForm() {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [resendSuccess, setResendSuccess] = useState("");
+
+  // OTP Validity: 30 minutes (1800 seconds)
+  const [timeLeft, setTimeLeft] = useState(1800);
+  // Resend Cooldown: 60 seconds
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     if (initialEmail) {
@@ -32,10 +50,77 @@ function ResetPasswordForm() {
     }
   }, [initialEmail, tokenParam]);
 
+  // Handle countdown for 30-minute validity
+  useEffect(() => {
+    const storageKey = formData.email ? `otp_expiry_${formData.email.trim().toLowerCase()}` : "otp_expiry_default";
+    let expiry = sessionStorage.getItem(storageKey);
+    if (!expiry) {
+      expiry = (Date.now() + 30 * 60 * 1000).toString();
+      sessionStorage.setItem(storageKey, expiry);
+    }
+
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.floor((parseInt(expiry, 10) - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [formData.email]);
+
+  // Handle resend cooldown countdown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0 || resending) return;
+    if (!formData.email) {
+      setError("Please enter your account email first to receive a new OTP code.");
+      return;
+    }
+
+    setResending(true);
+    setError("");
+    setResendSuccess("");
+
+    try {
+      const res = await authAPI.forgotPassword(formData.email.trim());
+      // Reset 30-minute timer
+      const newExpiry = (Date.now() + 30 * 60 * 1000).toString();
+      const storageKey = `otp_expiry_${formData.email.trim().toLowerCase()}`;
+      sessionStorage.setItem(storageKey, newExpiry);
+      setTimeLeft(1800);
+      setResendCooldown(60); // 60s cooldown
+      setResendSuccess(res.message || "Fresh 6-digit OTP code sent! Please check your inbox / spam.");
+      setTimeout(() => setResendSuccess(""), 8000);
+    } catch (err) {
+      setError(err.message || "Could not resend OTP. Please try again shortly.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (timeLeft <= 0) {
+      setError("This OTP has expired. Please click 'Resend OTP' to get a fresh code.");
+      return;
+    }
 
     if (!formData.email || (!formData.otp && !formData.token) || !formData.newPassword) {
       setError("Please enter your email, verification OTP, and new password.");
@@ -60,6 +145,10 @@ function ResetPasswordForm() {
         token: formData.token.trim(),
         newPassword: formData.newPassword,
       });
+      // Clear session expiry on success
+      if (formData.email) {
+        sessionStorage.removeItem(`otp_expiry_${formData.email.trim().toLowerCase()}`);
+      }
       setSuccess(res.message || "Password reset successfully! Redirecting to login...");
       setTimeout(() => {
         router.push("/login");
@@ -88,14 +177,60 @@ function ResetPasswordForm() {
           </span>
           <h1 className="text-2xl font-serif font-bold text-stone-900">Reset Your Password</h1>
           <p className="text-xs text-stone-600">
-            Enter the 6-digit OTP code sent to your email and your new password.
+            Enter the 6-digit OTP code sent to your email and choose a new password.
           </p>
+        </div>
+
+        {/* Live OTP Validity Countdown Banner */}
+        <div
+          className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+            timeLeft === 0
+              ? "bg-rose-50 border-rose-200 text-rose-800"
+              : timeLeft < 300
+              ? "bg-amber-50 border-amber-200 text-amber-900"
+              : "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Clock
+              className={`w-4 h-4 shrink-0 ${
+                timeLeft === 0
+                  ? "text-rose-600"
+                  : timeLeft < 300
+                  ? "text-amber-600 animate-pulse"
+                  : "text-emerald-600"
+              }`}
+            />
+            <span className="font-medium">
+              {timeLeft === 0 ? "OTP Expired" : "OTP Code Valid For:"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-md ${
+                timeLeft === 0
+                  ? "bg-rose-100 text-rose-700"
+                  : timeLeft < 300
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}
+            >
+              {formatTime(timeLeft)}
+            </span>
+          </div>
         </div>
 
         {error && (
           <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {resendSuccess && (
+          <div className="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-800 text-xs flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-sky-600" />
+            <span>{resendSuccess}</span>
           </div>
         )}
 
@@ -123,14 +258,33 @@ function ResetPasswordForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-stone-700">6-Digit Verification Code (OTP)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-stone-700">
+                6-Digit Verification Code (OTP)
+              </label>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={resending || resendCooldown > 0}
+                className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 disabled:text-stone-400 disabled:cursor-not-allowed flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <RefreshCw className={`w-3 h-3 ${resending ? "animate-spin" : ""}`} />
+                {resending
+                  ? "Resending..."
+                  : resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : "Resend OTP"}
+              </button>
+            </div>
             <div className="relative">
               <input
                 type="text"
                 required
                 maxLength={6}
                 value={formData.otp}
-                onChange={(e) => setFormData({ ...formData, otp: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, otp: e.target.value.replace(/\D/g, "") })
+                }
                 placeholder="123456"
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-sm font-mono tracking-widest text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-hidden focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 transition-all"
               />

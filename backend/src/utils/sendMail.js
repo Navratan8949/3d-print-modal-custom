@@ -1,44 +1,49 @@
-const nodemailer = require("nodemailer");
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", "..", ".env") });
+const { Resend } = require("resend");
 
-/**
- * Singleton Nodemailer Transporter with Connection Pooling
- */
-let cachedTransporter = null;
+// Initialize Resend Client
+const resendApiKey = (process.env.RESEND_API_KEY || process.env.RESAND_API_KEY || "").trim();
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const getTransporter = () => {
-  if (cachedTransporter) return cachedTransporter;
-
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT || 465);
-  const secure = process.env.SMTP_SECURE === "true" || port === 465;
-  const user = (process.env.SMTP_USER || "prime3dprintinglab@gmail.com").trim();
-  const pass = (process.env.SMTP_PASS || "ordfiripqxfgclfk").replace(/\s+/g, "");
-
-  cachedTransporter = nodemailer.createTransport({
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
-    host,
-    port,
-    secure,
-    auth: {
-      user,
-      pass,
-    },
-  });
-
-  return cachedTransporter;
-};
+if (!resend) {
+  console.warn("⚠️ [RESEND WARNING] RESEND_API_KEY is not set in environment.");
+}
 
 const getSenderDetails = () => {
-  const fromName = process.env.SMTP_FROM_NAME || "Prime 3D Printing Lab";
-  const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || "prime3dprintinglab@gmail.com";
-  return `"${fromName}" <${fromEmail}>`;
+  return (
+    process.env.RESEND_FROM_EMAIL ||
+    "Prime 3D Printing Lab <onboarding@resend.dev>"
+  ).trim();
+};
+
+// Singleton Gmail SMTP Transporter Fallback
+let cachedNodemailerTransporter = null;
+const getNodemailerTransporter = () => {
+  if (cachedNodemailerTransporter) return cachedNodemailerTransporter;
+  try {
+    const nodemailer = require("nodemailer");
+    cachedNodemailerTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER || "prime3dprintinglab@gmail.com",
+        pass: (process.env.SMTP_PASS || "ordfiripqxfgclfk").replace(/\s+/g, ""),
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+    return cachedNodemailerTransporter;
+  } catch (e) {
+    console.warn("Nodemailer not loaded for fallback:", e.message);
+    return null;
+  }
 };
 
 /**
  * Non-blocking Background Email Dispatcher
- * Executes the email task via setImmediate without delaying HTTP responses
  */
 const sendInBackground = (fn, label = "Email Task") => {
   setImmediate(async () => {
@@ -55,13 +60,62 @@ const sendInBackground = (fn, label = "Email Task") => {
 exports.sendInBackground = sendInBackground;
 
 /**
+ * Intelligent Hybrid Email Sender Helper
+ * Tries Resend first; if restricted/unverified, automatically falls back to Gmail SMTP
+ */
+const sendResendEmail = async ({ to, subject, html, text }) => {
+  const recipients = Array.isArray(to) ? to : [to];
+
+  // 1. Try Resend
+  if (resend) {
+    try {
+      const from = getSenderDetails();
+      const { data, error } = await resend.emails.send({
+        from,
+        to: recipients,
+        subject,
+        html,
+        text,
+      });
+
+      if (!error && data) {
+        console.log(`[RESEND SUCCESS] Dispatched to ${recipients.join(", ")} (ID: ${data.id})`);
+        return data;
+      }
+
+      console.warn(`[RESEND NOTICE] ${error?.message || "Resend failed"}. Falling back to Gmail SMTP...`);
+    } catch (err) {
+      console.warn(`[RESEND NOTICE] ${err.message}. Falling back to Gmail SMTP...`);
+    }
+  }
+
+  // 2. Fallback to Gmail SMTP (Ensures 100% delivery to any customer)
+  const transporter = getNodemailerTransporter();
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: '"Prime 3D Printing Lab" <prime3dprintinglab@gmail.com>',
+        to: recipients.join(", "),
+        subject,
+        html,
+        text,
+      });
+      console.log(`[GMAIL SMTP SUCCESS] Delivered to ${recipients.join(", ")} (MessageId: ${info.messageId})`);
+      return info;
+    } catch (smtpErr) {
+      console.error(`[SMTP ERROR] Failed to send email to ${recipients.join(", ")}:`, smtpErr.message);
+      throw smtpErr;
+    }
+  }
+
+  throw new Error("No active email transporter available");
+};
+
+/**
  * 1. Welcome Email on User Registration
  */
 exports.sendWelcomeEmail = async (user) => {
   try {
-    const transporter = getTransporter();
-    const from = getSenderDetails();
-
     const html = `
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #faf8f5; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden;">
         <div style="background-color: #1c1917; padding: 28px 24px; text-align: center;">
@@ -80,7 +134,7 @@ exports.sendWelcomeEmail = async (user) => {
             </p>
           </div>
           <p style="font-size: 14px; line-height: 1.6; color: #57534e;">
-            You can now view your custom orders, track manufacturing progress, and get quick WhatsApp assistance for your personalized 3D miniature figurines, sacred idols, and desk decors.
+            You can now view your custom orders, track manufacturing progress, and get quick assistance for your personalized 3D miniature figurines, sacred idols, and desk decors.
           </p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/shop" style="display: inline-block; background-color: #d97706; color: #ffffff; padding: 12px 28px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px;">
@@ -94,8 +148,7 @@ exports.sendWelcomeEmail = async (user) => {
       </div>
     `;
 
-    return await transporter.sendMail({
-      from,
+    return await sendResendEmail({
       to: user.email,
       subject: "Welcome to Prime 3D Printing Lab!",
       html,
@@ -111,8 +164,6 @@ exports.sendWelcomeEmail = async (user) => {
  */
 exports.sendPasswordResetEmail = async (email, otp, resetToken, userName = "User") => {
   try {
-    const transporter = getTransporter();
-    const from = getSenderDetails();
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
     const html = `
@@ -130,7 +181,7 @@ exports.sendPasswordResetEmail = async (email, otp, resetToken, userName = "User
             <div style="display: inline-block; background-color: #fef3c7; border: 2px dashed #d97706; padding: 14px 32px; border-radius: 12px; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #b45309;">
               ${otp}
             </div>
-            <p style="font-size: 12px; color: #78716c; margin-top: 8px;">This code will expire in 15 minutes.</p>
+            <p style="font-size: 12px; color: #78716c; margin-top: 8px;">This code is valid for 30 minutes.</p>
           </div>
           <div style="text-align: center; margin: 24px 0;">
             <p style="font-size: 13px; color: #78716c; margin-bottom: 12px;">Or click the button below to reset directly:</p>
@@ -148,8 +199,7 @@ exports.sendPasswordResetEmail = async (email, otp, resetToken, userName = "User
       </div>
     `;
 
-    return await transporter.sendMail({
-      from,
+    return await sendResendEmail({
       to: email,
       subject: `Prime 3D: Your Password Reset Code is ${otp}`,
       html,
@@ -165,9 +215,6 @@ exports.sendPasswordResetEmail = async (email, otp, resetToken, userName = "User
  */
 exports.sendPasswordChangedEmail = async (email, userName = "Customer") => {
   try {
-    const transporter = getTransporter();
-    const from = getSenderDetails();
-
     const html = `
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #faf8f5; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden;">
         <div style="background-color: #1c1917; padding: 24px; text-align: center;">
@@ -190,8 +237,7 @@ exports.sendPasswordChangedEmail = async (email, userName = "Customer") => {
       </div>
     `;
 
-    return await transporter.sendMail({
-      from,
+    return await sendResendEmail({
       to: email,
       subject: "Security Alert: Your Prime 3D Password Has Been Changed",
       html,
@@ -207,8 +253,6 @@ exports.sendPasswordChangedEmail = async (email, userName = "Customer") => {
  */
 exports.sendOrderEmails = async (order) => {
   try {
-    const transporter = getTransporter();
-    const from = getSenderDetails();
     const adminEmail = process.env.ADMIN_EMAIL || "prime3dprintinglab@gmail.com";
 
     const itemsHtml = (order.items || [])
@@ -235,6 +279,11 @@ exports.sendOrderEmails = async (order) => {
       )
       .join("");
 
+    const paymentBadge =
+      order.paymentStatus === "paid"
+        ? `<span style="background-color: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700;">PAID (Razorpay ID: ${order.razorpayPaymentId || 'Verified'})</span>`
+        : `<span style="background-color: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700;">PAYMENT PENDING</span>`;
+
     // 1. Admin Email
     const adminHtml = `
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden;">
@@ -243,6 +292,10 @@ exports.sendOrderEmails = async (order) => {
           <p style="margin: 6px 0 0; font-size: 14px;">Order #${order.orderNumber}</p>
         </div>
         <div style="padding: 24px;">
+          <div style="margin-bottom: 16px;">
+            <strong>Payment Status:</strong> ${paymentBadge}
+          </div>
+
           <h3 style="color: #1c1917; margin-top: 0;">Customer Information</h3>
           <p style="font-size: 14px; line-height: 1.6; color: #44403c; background: #faf8f5; padding: 14px; border-radius: 8px;">
             <strong>Name:</strong> ${order.customer.name}<br/>
@@ -279,10 +332,10 @@ exports.sendOrderEmails = async (order) => {
       </div>
     `;
 
-    await transporter.sendMail({
-      from,
+    // Send to Admin
+    await sendResendEmail({
       to: adminEmail,
-      subject: `🚨 New Order #${order.orderNumber} from ${order.customer.name} (₹${order.totalAmount})`,
+      subject: `🚨 New Order #${order.orderNumber} from ${order.customer.name} (₹${order.totalAmount}) [${order.paymentStatus.toUpperCase()}]`,
       html: adminHtml,
     });
 
@@ -296,8 +349,15 @@ exports.sendOrderEmails = async (order) => {
           </div>
           <div style="padding: 28px 24px; color: #292524;">
             <h2 style="font-size: 18px; color: #1c1917; margin-top: 0;">Thank you for your order, ${order.customer.name}! 🎉</h2>
+            <div style="margin: 14px 0;">
+              ${paymentBadge}
+            </div>
             <p style="font-size: 14px; line-height: 1.6; color: #57534e;">
-              We have received your custom 3D printing order. Our team will review your specifications, prepare the 3D print slicing, and reach out to you via WhatsApp to finalize print previews and dispatch.
+              ${
+                order.paymentStatus === "paid"
+                  ? "We have verified your payment! Our 3D printing engineering team is now preparing the CAD slice models and production queue."
+                  : "We have received your custom 3D printing order. Our team will review your specifications, prepare the 3D print slicing, and reach out to you to finalize manufacturing."
+              }
             </p>
             <h3 style="color: #1c1917; font-size: 15px; margin-top: 20px;">Order Summary</h3>
             <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
@@ -311,7 +371,7 @@ exports.sendOrderEmails = async (order) => {
               <tbody>${itemsHtml}</tbody>
               <tfoot>
                 <tr>
-                  <td colspan="2" style="padding: 12px 8px; text-align: right; font-weight: bold;">Total Estimate:</td>
+                  <td colspan="2" style="padding: 12px 8px; text-align: right; font-weight: bold;">Total:</td>
                   <td style="padding: 12px 8px; text-align: right; font-weight: bold; color: #d97706;">₹${order.totalAmount}</td>
                 </tr>
               </tfoot>
@@ -336,10 +396,9 @@ exports.sendOrderEmails = async (order) => {
         </div>
       `;
 
-      await transporter.sendMail({
-        from,
+      await sendResendEmail({
         to: order.customer.email,
-        subject: `Your Prime 3D Order #${order.orderNumber} has been received!`,
+        subject: `Your Prime 3D Order #${order.orderNumber} is Confirmed!`,
         html: customerHtml,
       });
     }
@@ -357,8 +416,6 @@ exports.sendOrderEmails = async (order) => {
 exports.sendOrderStatusEmail = async (order) => {
   try {
     if (!order.customer || !order.customer.email) return null;
-    const transporter = getTransporter();
-    const from = getSenderDetails();
 
     const statusLabels = {
       pending: "Received / Under Review",
@@ -411,8 +468,7 @@ exports.sendOrderStatusEmail = async (order) => {
       </div>
     `;
 
-    return await transporter.sendMail({
-      from,
+    return await sendResendEmail({
       to: order.customer.email,
       subject: `Order #${order.orderNumber} Update: ${statusTitle}`,
       html,
@@ -424,12 +480,10 @@ exports.sendOrderStatusEmail = async (order) => {
 };
 
 /**
- * 6. Contact Form Inquiries (Admin Alert + Customer Acknowledgment)
+ * 6. Contact Form Inquiries
  */
 exports.sendContactInquiryEmails = async ({ name, email, phone, subject, message }) => {
   try {
-    const transporter = getTransporter();
-    const from = getSenderDetails();
     const adminEmail = process.env.ADMIN_EMAIL || "prime3dprintinglab@gmail.com";
 
     const adminHtml = `
@@ -455,8 +509,7 @@ exports.sendContactInquiryEmails = async ({ name, email, phone, subject, message
       </div>
     `;
 
-    await transporter.sendMail({
-      from,
+    await sendResendEmail({
       to: adminEmail,
       subject: `📬 New Website Inquiry: ${subject || "General Inquiry"} from ${name}`,
       html: adminHtml,
@@ -471,8 +524,8 @@ exports.sendContactInquiryEmails = async ({ name, email, phone, subject, message
           <p style="font-size: 13px; color: #78716c;">Prime 3D Printing Lab • +91 6376145171</p>
         </div>
       `;
-      await transporter.sendMail({
-        from,
+
+      await sendResendEmail({
         to: email,
         subject: "We have received your message – Prime 3D Printing Lab",
         html: customerAckHtml,

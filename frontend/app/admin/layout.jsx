@@ -134,6 +134,12 @@ export default function AdminLayout({ children }) {
       icon: Package,
       description: "Add & edit 3D creations",
     },
+    {
+      label: "Customer Inquiries",
+      href: "/admin/queries",
+      icon: MessageCircle,
+      description: "Custom quotes & questions",
+    },
   ];
 
   return (
