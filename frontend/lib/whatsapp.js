@@ -7,6 +7,10 @@ export const WHATSAPP_PHONE_NUMBER = "916376145171";
 export const DISPLAY_PHONE_NUMBER = "+91 6376145171";
 export const BRAND_EMAIL = "prime3dprintinglab@gmail.com";
 
+export const WHATSAPP_CONSULTATION_URL = `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${encodeURIComponent(
+  "Hello Prime3Dworld! I want to order a Custom 3D Miniature / Personalized Creation from my photo. Please guide me with options and pricing."
+)}`;
+
 /**
  * Generate a pre-filled WhatsApp link for a single product inquiry/order
  */

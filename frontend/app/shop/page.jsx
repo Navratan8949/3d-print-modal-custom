@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { Search, X, SlidersHorizontal, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
 import ProductGrid from "@/components/products/ProductGrid";
+import PromoMiniatureBanner from "@/components/common/PromoMiniatureBanner";
 import { CATEGORIES } from "@/data/categories";
+import { PRODUCTS } from "@/data/products";
 import { productsAPI, categoriesAPI } from "@/lib/api";
 
 function ShopContent() {
@@ -14,9 +16,9 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [productsList, setProductsList] = useState([]);
+  const [productsList, setProductsList] = useState(PRODUCTS);
   const [categoriesList, setCategoriesList] = useState(CATEGORIES);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     categoriesAPI
@@ -36,33 +38,71 @@ function ShopContent() {
   }, [categoryParam]);
 
   useEffect(() => {
-    setLoading(true);
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
-        if (res && res.products) {
-          setProductsList(res.products);
+        if (res && res.products && res.products.length > 0) {
+          // Merge dynamic products with master products to guarantee completeness
+          const dbProducts = res.products;
+          const merged = [...dbProducts];
+          const dbSlugs = new Set(dbProducts.map((p) => p.slug || String(p.id)));
+
+          PRODUCTS.forEach((staticProd) => {
+            if (!dbSlugs.has(staticProd.slug) && !dbSlugs.has(String(staticProd.id))) {
+              merged.push(staticProd);
+            }
+          });
+
+          setProductsList(merged);
         }
       })
       .catch((err) => {
-        console.error("Failed to fetch dynamic products from database:", err.message);
-      })
-      .finally(() => {
-        setLoading(false);
+        console.warn("Using master catalog fallback:", err.message);
       });
   }, []);
 
   // Filtering and Sorting logic
   const filteredProducts = useMemo(() => {
-    let result = Array.isArray(productsList) ? [...productsList] : [];
+    let result = Array.isArray(productsList) ? [...productsList] : [...PRODUCTS];
 
-    // Category filter
+    // Robust category filter matching slug, id, and normalized name
     if (selectedCategory && selectedCategory !== "all") {
+      const target = selectedCategory.toLowerCase().trim();
+      const normalizedTarget = target.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
       result = result.filter((p) => {
-        const catId = (p.categoryId || "").toLowerCase();
-        const catName = (p.category || "").toLowerCase();
-        const target = selectedCategory.toLowerCase();
-        return catId === target || catName === target || catName.includes(target) || catId.includes(target);
+        const catId = (p.categoryId || "").toLowerCase().trim();
+        const catName = (p.category || "").toLowerCase().trim();
+        const catSlug = (p.categorySlug || catId).toLowerCase().trim();
+        const normalizedCatId = catId.replace(/[^a-z0-9]+/g, "-");
+        const normalizedCatName = catName.replace(/[^a-z0-9]+/g, "-");
+
+        // Exact match
+        if (catId === target || catName === target || catSlug === target) return true;
+
+        // Normalized slug match (e.g. "personalized-name-models" vs "Personalized Name Models")
+        if (
+          normalizedCatId === normalizedTarget ||
+          normalizedCatName === normalizedTarget ||
+          normalizedCatId.includes(normalizedTarget) ||
+          normalizedTarget.includes(normalizedCatId)
+        ) {
+          return true;
+        }
+
+        // Substring / keyword fallbacks
+        if (target.includes("name") && (catId.includes("name") || catName.includes("name"))) return true;
+        if (
+          (target.includes("figurin") || target.includes("miniature")) &&
+          (catId.includes("figurin") || catName.includes("figurin") || catId.includes("miniature"))
+        ) {
+          return true;
+        }
+        if (target.includes("idol") && (catId.includes("idol") || catName.includes("idol"))) return true;
+        if (target.includes("decor") && (catId.includes("decor") || catName.includes("decor"))) return true;
+        if (target.includes("planter") && (catId.includes("planter") || catName.includes("planter"))) return true;
+
+        return catName.includes(target) || catId.includes(target);
       });
     }
 
@@ -120,22 +160,24 @@ function ShopContent() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="p-4 sm:p-5 bg-white rounded-2xl border border-stone-200/90 shadow-2xs space-y-4">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Search Box */}
+      <div className="p-4 sm:p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+          {/* Search Box with High Visibility */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, ID (#101), or category..."
-              className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-600 focus:bg-white transition-colors"
+              className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm font-medium bg-stone-50 hover:bg-white focus:bg-white border border-stone-300 focus:border-amber-600 rounded-xl focus:outline-hidden transition-all text-stone-900 placeholder:text-stone-400 shadow-2xs"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 rounded-md transition-colors"
+                aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -143,16 +185,16 @@ function ShopContent() {
           </div>
 
           {/* Sort & Reset */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-stone-500" />
-              <span className="text-xs font-medium text-stone-600 hidden sm:inline">
+              <SlidersHorizontal className="w-4 h-4 text-stone-600" />
+              <span className="text-xs font-semibold text-stone-700 hidden sm:inline">
                 Sort by:
               </span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3.5 py-2.5 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-600 text-stone-800 transition-colors"
+                className="px-3.5 py-2.5 text-xs font-bold bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:border-amber-600 text-stone-800 transition-colors shadow-2xs cursor-pointer"
               >
                 <option value="featured">Featured First</option>
                 <option value="price-low">Price: Low to High</option>
@@ -164,8 +206,9 @@ function ShopContent() {
 
             {isFiltered && (
               <button
+                type="button"
                 onClick={clearAllFilters}
-                className="px-3 py-2 text-xs font-semibold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors"
+                className="px-3.5 py-2.5 text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-100/80 hover:bg-amber-200 border border-amber-300 rounded-xl transition-all cursor-pointer shadow-2xs"
               >
                 Clear Filters
               </button>
@@ -173,14 +216,15 @@ function ShopContent() {
           </div>
         </div>
 
-        {/* Category Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* Category Filter Tabs - Pure Scrollbar-Free with High Visibility */}
+        <div className="flex items-center gap-2.5 overflow-x-auto py-1.5 px-0.5 no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
+            type="button"
             onClick={() => setSelectedCategory("all")}
-            className={`px-4 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
+            className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
               selectedCategory === "all"
-                ? "bg-stone-900 text-white shadow-xs"
-                : "bg-stone-50 text-stone-700 border border-stone-200 hover:bg-stone-100"
+                ? "bg-stone-900 text-white shadow-md shadow-stone-900/20 ring-2 ring-stone-900"
+                : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
             }`}
           >
             All Products ({productsList.length})
@@ -190,11 +234,12 @@ function ShopContent() {
             return (
               <button
                 key={cat.id || cat.slug}
+                type="button"
                 onClick={() => setSelectedCategory(cat.slug || cat.id)}
-                className={`px-4 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
+                className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                   isSelected
-                    ? "bg-amber-600 text-white shadow-xs"
-                    : "bg-stone-50 text-stone-700 border border-stone-200 hover:bg-stone-100"
+                    ? "bg-amber-600 text-white shadow-md shadow-amber-600/25 ring-2 ring-amber-600"
+                    : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
                 }`}
               >
                 {cat.name}
@@ -203,6 +248,9 @@ function ShopContent() {
           })}
         </div>
       </div>
+
+      {/* Promotional Custom 3D Miniature Spotlight Banner */}
+      <PromoMiniatureBanner />
 
       {/* Results Header Count */}
       <div className="flex items-center justify-between text-xs text-stone-500 px-1">

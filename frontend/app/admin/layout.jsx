@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -135,6 +136,12 @@ export default function AdminLayout({ children }) {
       description: "Add & edit 3D creations",
     },
     {
+      label: "Categories & Priority",
+      href: "/admin/categories",
+      icon: Layers,
+      description: "Priority order & groups",
+    },
+    {
       label: "Customer Inquiries",
       href: "/admin/queries",
       icon: MessageCircle,
@@ -160,7 +167,7 @@ export default function AdminLayout({ children }) {
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } ${isCollapsed ? "w-64 sm:w-72 lg:w-20" : "w-64 sm:w-72 lg:w-72"}`}
       >
-        {/* Top: Brand & Logo */}
+        {/* Top: Brand & Logo with Hover/Click Expansion */}
         <div>
           <div
             className={`p-4 sm:p-5 border-b border-stone-800/80 flex items-center transition-all ${
@@ -173,8 +180,14 @@ export default function AdminLayout({ children }) {
                 isCollapsed ? "lg:hidden" : ""
               }`}
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white shadow-lg shadow-amber-600/20 shrink-0">
-                <Layers className="w-5 h-5" />
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-amber-500/30 shadow-md shadow-amber-600/20 shrink-0 bg-stone-900">
+                <Image
+                  src="/images/logo/prime3dworld-logo.jpeg"
+                  alt="Prime 3D World Logo"
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                />
               </div>
               <div className="min-w-0">
                 <h1 className="font-serif font-bold text-sm tracking-wide text-white truncate">
@@ -186,15 +199,31 @@ export default function AdminLayout({ children }) {
               </div>
             </div>
 
-            {/* Collapsed Icon Only on Desktop */}
+            {/* Collapsed Logo Trigger on Desktop: Hover reveals Open Sidebar icon, Click opens sidebar */}
             {isCollapsed && (
               <button
+                type="button"
                 onClick={toggleCollapse}
-                title="Expand Sidebar (Ctrl+B)"
-                className="hidden lg:flex w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 items-center justify-center text-white shadow-lg shadow-amber-600/20 hover:scale-105 active:scale-95 transition-all group relative"
+                title="Expand Sidebar (Click to open)"
+                className="hidden lg:flex relative group w-11 h-11 rounded-xl overflow-hidden border border-stone-700/80 hover:border-amber-500 items-center justify-center bg-stone-900 shadow-lg shadow-black/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                aria-label="Expand Sidebar"
               >
-                <Layers className="w-5 h-5" />
-                <span className="sr-only">Expand Sidebar</span>
+                {/* Logo Image */}
+                <Image
+                  src="/images/logo/prime3dworld-logo.jpeg"
+                  alt="Prime 3D Logo"
+                  fill
+                  sizes="44px"
+                  className="object-cover transition-opacity duration-200 group-hover:opacity-20"
+                />
+                {/* Hover Reveal: Open Sidebar Icon */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-stone-950/85">
+                  <PanelLeftOpen className="w-5 h-5 text-amber-400 drop-shadow-md animate-pulse" />
+                </div>
+                {/* Tooltip on right */}
+                <div className="hidden group-hover:block absolute left-full ml-3 px-2.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg shadow-xl whitespace-nowrap z-50 border border-stone-800 pointer-events-none">
+                  Open Sidebar
+                </div>
               </button>
             )}
 
@@ -202,8 +231,9 @@ export default function AdminLayout({ children }) {
               {/* Desktop Collapse Button when expanded */}
               {!isCollapsed && (
                 <button
+                  type="button"
                   onClick={toggleCollapse}
-                  className="hidden lg:flex p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-900 transition-colors"
+                  className="hidden lg:flex p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-900 transition-colors cursor-pointer"
                   title="Collapse Sidebar (Ctrl+B)"
                   aria-label="Collapse Sidebar"
                 >
@@ -213,8 +243,10 @@ export default function AdminLayout({ children }) {
 
               {/* Mobile Close Drawer Button */}
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 lg:hidden"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 lg:hidden cursor-pointer"
+                aria-label="Close sidebar"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -433,73 +465,22 @@ export default function AdminLayout({ children }) {
       </aside>
 
       {/* ======================================================== */}
-      {/* MAIN ADMIN WORKSPACE (Top Bar + Dynamic Content) */}
+      {/* MAIN ADMIN WORKSPACE (Full-Height Dynamic Content, Header Removed) */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden overflow-y-auto max-h-screen">
-        {/* Dedicated Admin Top Bar */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-stone-200/90 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {/* Hamburger Trigger for Mobile */}
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 lg:hidden"
-              aria-label="Open sidebar"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            {/* Desktop Collapse / Expand Toggle Button */}
-            <button
-              onClick={toggleCollapse}
-              className="hidden lg:flex items-center justify-center p-2 rounded-xl text-stone-600 hover:text-stone-950 hover:bg-stone-100 transition-colors"
-              title={
-                isCollapsed
-                  ? "Expand Sidebar (Ctrl+B)"
-                  : "Collapse Sidebar (Ctrl+B)"
-              }
-              aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {isCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-amber-600" />
-              ) : (
-                <PanelLeftClose className="w-5 h-5 text-stone-600 hover:text-stone-900" />
-              )}
-            </button>
-
-            {/* Breadcrumb Path */}
-            <div className="flex items-center gap-2 text-xs font-medium text-stone-500">
-              <span className="hidden sm:inline">Admin</span>
-              <span className="hidden sm:inline text-stone-300">/</span>
-              <span className="text-stone-900 font-semibold capitalize">
-                {pathname === "/admin"
-                  ? "Dashboard"
-                  : pathname.replace("/admin/", "").replace("-", " ")}
-              </span>
-            </div>
-          </div>
-
-          {/* Right Header Status Utilities */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Live API Health indicator */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/70 text-[11px] font-semibold text-emerald-800">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Backend Live (5001)</span>
-            </div>
-
-            {/* View Storefront Link */}
-            <Link
-              href="/"
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs transition-colors"
-            >
-              {/* <span>Storefront</span> */}
-              <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
-            </Link>
-          </div>
-        </header>
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden overflow-y-auto max-h-screen relative">
+        {/* Floating Mobile Menu Button (Header removed as requested) */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className="lg:hidden fixed top-3 left-3 z-40 px-3 py-2 rounded-xl bg-stone-900/95 text-amber-400 shadow-xl border border-stone-800 hover:bg-stone-800 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+          aria-label="Open sidebar"
+        >
+          <Menu className="w-4 h-4 text-amber-400" />
+          <span className="text-[11px] font-bold text-stone-200">Admin</span>
+        </button>
 
         {/* Dynamic Admin View Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pt-14 lg:pt-8 space-y-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>

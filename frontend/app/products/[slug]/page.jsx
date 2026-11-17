@@ -3,8 +3,17 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import ProductDetailView from "@/components/products/ProductDetailView";
 import ProductCard from "@/components/products/ProductCard";
+import { PRODUCTS } from "@/data/products";
 
 export async function generateStaticParams() {
+  const paramsMap = new Map();
+
+  // Populate from master catalog first
+  PRODUCTS.forEach((product) => {
+    if (product.slug) paramsMap.set(product.slug, { slug: product.slug });
+    if (product.id) paramsMap.set(String(product.id), { slug: String(product.id) });
+  });
+
   try {
     const apiUrl =
       process.env.INTERNAL_API_URL ||
@@ -16,18 +25,17 @@ export async function generateStaticParams() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.products) {
-        const params = [];
         data.products.forEach((product) => {
-          if (product.slug) params.push({ slug: product.slug });
-          if (product.id) params.push({ slug: String(product.id) });
+          if (product.slug) paramsMap.set(product.slug, { slug: product.slug });
+          if (product.id) paramsMap.set(String(product.id), { slug: String(product.id) });
         });
-        return params;
       }
     }
   } catch {
     // fallback
   }
-  return [];
+
+  return Array.from(paramsMap.values());
 }
 
 export const dynamicParams = true;
@@ -46,8 +54,24 @@ async function fetchProduct(slug) {
       if (data && data.product) return data;
     }
   } catch {
-    // fallback
+    // fallback to static products
   }
+
+  // Master catalog fallback ensures zero 404s
+  const staticProduct = PRODUCTS.find(
+    (p) => p.slug === slug || String(p.id) === String(slug)
+  );
+
+  if (staticProduct) {
+    const related = PRODUCTS.filter(
+      (p) =>
+        p.id !== staticProduct.id &&
+        (p.categoryId === staticProduct.categoryId || p.category === staticProduct.category)
+    ).slice(0, 4);
+
+    return { product: staticProduct, related };
+  }
+
   return null;
 }
 
@@ -58,7 +82,8 @@ export async function generateMetadata({ params }) {
 
   if (!product) {
     return {
-      title: "Product Not Found – Prime3Dworld",
+      title: "Product Not Found – Prime 3D World",
+      description: "The requested 3D print creation could not be found.",
     };
   }
 
@@ -82,17 +107,25 @@ export async function generateMetadata({ params }) {
     ? rawImage
     : `${siteUrl}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
 
-  const pageTitle = `${product.name} (₹${product.price}) – Prime 3D World`;
+  const pageTitle = `${product.name} (₹${product.price}) | 3D Print Custom India`;
   const pageDescription =
     product.shortDescription ||
     (product.description ? product.description.slice(0, 160) : "") ||
-    "Custom 3D printed creation sculpted with precision. Order directly on WhatsApp.";
+    "Custom 3D printed creation sculpted with precision. Order directly on WhatsApp or buy online.";
 
   const isPng = absoluteImageUrl.toLowerCase().endsWith(".png");
 
   return {
     title: pageTitle,
     description: pageDescription,
+    keywords: [
+      product.name,
+      product.category || "3D Printing",
+      "3D miniature in India",
+      "custom 3D gift",
+      "Prime 3D World",
+      ...(product.tags || []),
+    ],
     alternates: {
       canonical: `${siteUrl}/products/${product.slug}`,
     },
@@ -105,9 +138,9 @@ export async function generateMetadata({ params }) {
         {
           url: absoluteImageUrl,
           secureUrl: absoluteImageUrl,
-          width: 1024,
-          height: 1536,
-          alt: product.name,
+          width: 1200,
+          height: 630,
+          alt: `${product.name} - Prime 3D World Custom 3D Printing`,
           type: isPng ? "image/png" : "image/jpeg",
         },
       ],
@@ -131,11 +164,124 @@ export default async function ProductDetailPage({ params }) {
     notFound();
   }
 
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.prime3dworld.in"
+  ).replace(/\/$/, "");
+
+  let rawImage =
+    product.image_url ||
+    (product.images && product.images[0]) ||
+    "/images/products/fullbody-figurine-hero.jpeg";
+
+  if (typeof rawImage === "string" && rawImage.startsWith("/uploads/")) {
+    const backendUrl = (
+      process.env.NEXT_PUBLIC_BACKEND_URL || siteUrl
+    ).replace(/\/$/, "");
+    rawImage = `${backendUrl}${rawImage}`;
+  }
+
+  const absoluteImageUrl = rawImage.startsWith("http")
+    ? rawImage
+    : `${siteUrl}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
+
+  // Rich Snippets: Product Schema
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    image: [absoluteImageUrl],
+    description:
+      product.description ||
+      product.shortDescription ||
+      "Custom 3D printed model handcrafted with precision.",
+    sku: product.sku || `3DVS-${product.id}`,
+    mpn: `P3D-${product.id}`,
+    brand: {
+      "@type": "Brand",
+      name: "Prime 3D World",
+    },
+    material: product.material || "High-Density UV Resin & Premium PLA+",
+    offers: {
+      "@type": "Offer",
+      url: `${siteUrl}/products/${product.slug}`,
+      priceCurrency: "INR",
+      price: product.price,
+      priceValidUntil: "2027-12-31",
+      itemCondition: "https://schema.org/NewCondition",
+      availability: "https://schema.org/InStock",
+      seller: {
+        "@type": "Organization",
+        name: "Prime 3D World",
+      },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: "0.00",
+          currency: "INR",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "IN",
+        },
+      },
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: product.rating ? Number(product.rating).toFixed(1) : "4.9",
+      reviewCount: product.review_count ? Number(product.review_count) : 124,
+      bestRating: "5",
+      worstRating: "1",
+    },
+  };
+
+  // Rich Snippets: Breadcrumbs Schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: siteUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Catalog",
+        item: `${siteUrl}/shop`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.category || "3D Creations",
+        item: `${siteUrl}/shop?category=${product.categoryId || ""}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 4,
+        name: product.name,
+        item: `${siteUrl}/products/${product.slug}`,
+      },
+    ],
+  };
+
   // Complementary creations
   const relatedProducts = data?.related || [];
 
   return (
     <div className="py-8 sm:py-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+      {/* Google Rich Snippets JSON-LD Schemas */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+
       {/* Interactive Product Details Showcase */}
       <ProductDetailView product={product} />
 

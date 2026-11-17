@@ -50,17 +50,17 @@ const seedData = async () => {
       console.log(`✅ Demo customer created: customer@demo.com / Customer@1234!`);
     }
 
-    // 3. Seed initial products if Product collection is empty
-    const productCount = await Product.countDocuments();
-    if (productCount === 0) {
-      console.log("Seeding initial products from frontend catalog data...");
-      try {
-        const fileContent = fs.readFileSync(frontendProductsPath, "utf-8");
-        // extract the array using regex / JSON parse
-        const match = fileContent.match(/export\s+const\s+PRODUCTS\s*=\s*(\[[\s\S]*?\]);/);
-        if (match && match[1]) {
-          const rawProducts = JSON.parse(match[1]);
-          const formatted = rawProducts.map((p) => ({
+    // 3. Sync / Upsert catalog products from frontend data
+    console.log("Syncing / Upserting all master products from frontend catalog data...");
+    try {
+      const fileContent = fs.readFileSync(frontendProductsPath, "utf-8");
+      const match = fileContent.match(/export\s+const\s+PRODUCTS\s*=\s*(\[[\s\S]*?\]);/);
+      if (match && match[1]) {
+        const rawProducts = JSON.parse(match[1]);
+        let syncedCount = 0;
+        for (const p of rawProducts) {
+          const query = { $or: [{ slug: p.slug }, { id: p.id }] };
+          const doc = {
             id: p.id,
             sku: p.sku || `3DVS-${p.id}`,
             slug: p.slug,
@@ -85,18 +85,16 @@ const seedData = async () => {
             availableOptions: p.availableOptions || {},
             specifications: p.specifications || [],
             tags: p.tags || [],
-            currentStock: 100,
+            currentStock: p.currentStock || 100,
             status: "active",
-          }));
-
-          await Product.insertMany(formatted);
-          console.log(`✅ Successfully seeded ${formatted.length} products into MongoDB!`);
+          };
+          await Product.findOneAndUpdate(query, { $set: doc }, { upsert: true, new: true });
+          syncedCount++;
         }
-      } catch (err) {
-        console.warn("Could not auto-parse frontend products file:", err.message);
+        console.log(`✅ Successfully synced & upserted ${syncedCount} products into MongoDB!`);
       }
-    } else {
-      console.log(`ℹ️ Products already exist in database (${productCount} found).`);
+    } catch (err) {
+      console.warn("Could not auto-parse frontend products file:", err.message);
     }
 
     console.log("🎉 Seeding completed successfully!");

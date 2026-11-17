@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, ShoppingBag, ArrowRight, Sparkles, Star } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MessageCircle, ShoppingBag, ArrowRight, Zap, Star } from "lucide-react";
 import ProductVisual from "./ProductVisual";
 import { useCart } from "@/context/CartContext";
 import { createProductWhatsAppUrl } from "@/lib/whatsapp";
 
 export default function ProductCard({ product }) {
+  const router = useRouter();
   const { addToCart } = useCart();
 
   const handleQuickAdd = (e) => {
@@ -15,6 +17,15 @@ export default function ProductCard({ product }) {
     addToCart(product, 1, {
       Option: product.isCustomizable ? "Standard Custom" : "Standard",
     });
+  };
+
+  const handleQuickBuyNow = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product, 1, {
+      Option: product.isCustomizable ? "Standard Custom" : "Standard",
+    });
+    router.push("/cart");
   };
 
   const handleWhatsAppQuickInquiry = (e) => {
@@ -84,14 +95,25 @@ export default function ProductCard({ product }) {
             <Link href={`/products/${product.slug}`}>{product.name}</Link>
           </h3>
 
-          {/* Short Description */}
-          <p className="mt-1 text-xs text-stone-500 line-clamp-2 leading-relaxed">
-            {product.shortDescription}
-          </p>
+          {/* Short Description (Hook Tagline) with Side Details Button */}
+          <div className="mt-1.5 flex items-start justify-between gap-2">
+            <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed flex-1">
+              {product.shortDescription}
+            </p>
+            <Link
+              href={`/products/${product.slug}`}
+              className="shrink-0 text-xs font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-0.5 pt-0.5 whitespace-nowrap transition-colors group/link"
+              title="View Product Details"
+            >
+              <span className="group-hover/link:underline">Details</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-0.5" />
+            </Link>
+          </div>
         </div>
 
         {/* Pricing & Order Actions */}
         <div className="pt-3 border-t border-stone-100 space-y-3">
+          {/* Price Row */}
           <div className="flex items-baseline justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-base sm:text-lg font-black text-stone-900 tabular-nums">
@@ -104,33 +126,45 @@ export default function ProductCard({ product }) {
               )}
             </div>
 
-            <Link
-              href={`/products/${product.slug}`}
-              className="text-xs font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-1"
-            >
-              <span>Details</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {discountPercent > 0 && (
+              <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                Save {discountPercent}%
+              </span>
+            )}
           </div>
 
-          {/* Action Button Row */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* 3 Action Buttons in 2:2:1 Ratio (Add to Cart : Buy Now : WhatsApp Icon) */}
+          <div className="grid grid-cols-5 gap-1.5 items-center">
+            {/* Add to Cart Button (Ratio 2 - col-span-2) */}
             <button
+              type="button"
               onClick={handleQuickAdd}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition-colors active:scale-95"
-              title="Add to cart"
+              className="col-span-2 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] sm:text-xs font-semibold transition-colors active:scale-95 cursor-pointer"
+              title="Add to Cart"
             >
-              <ShoppingBag className="w-3.5 h-3.5 text-stone-600" />
-              <span>Add to Cart</span>
+              <ShoppingBag className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+              <span className="truncate">Add to Cart</span>
             </button>
 
+            {/* Buy Now Button (Ratio 2 - col-span-2) */}
             <button
-              onClick={handleWhatsAppQuickInquiry}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors active:scale-95"
-              title="Order on WhatsApp"
+              type="button"
+              onClick={handleQuickBuyNow}
+              className="col-span-2 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] sm:text-xs font-bold shadow-xs transition-colors active:scale-95 cursor-pointer"
+              title="⚡ Buy Now (Instant Checkout)"
             >
-              <MessageCircle className="w-3.5 h-3.5 fill-current" />
-              <span>Order</span>
+              <Zap className="w-3.5 h-3.5 fill-current text-stone-950 shrink-0" />
+              <span className="truncate">Buy Now</span>
+            </button>
+
+            {/* WhatsApp Button - Icon Only (Ratio 1 - col-span-1) */}
+            <button
+              type="button"
+              onClick={handleWhatsAppQuickInquiry}
+              className="col-span-1 flex items-center justify-center py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors active:scale-95 cursor-pointer"
+              title="Order / Inquire on WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4 fill-current" />
             </button>
           </div>
         </div>

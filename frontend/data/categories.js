@@ -10,6 +10,16 @@ export const CATEGORIES = [
     accentColor: "#D97706",
   },
   {
+    id: "personalized-name-models",
+    slug: "personalized-name-models",
+    name: "Personalized Name Models",
+    shortDescription: "Custom typography, desktop initials, and illuminated name art.",
+    description: "Bespoke 3D printed typography crafted for modern desks, bedside stands, corporate workstations, and celebratory gifts.",
+    itemCount: "Bespoke Custom",
+    tagline: "Expressive personalized typographic art",
+    accentColor: "#B45309",
+  },
+  {
     id: "3d-printed-idols",
     slug: "3d-printed-idols",
     name: "3D Printed Sacred Idols",
@@ -48,16 +58,6 @@ export const CATEGORIES = [
     itemCount: "6+ Accessories",
     tagline: "Functional botanical and workspace aesthetics",
     accentColor: "#D97706",
-  },
-  {
-    id: "personalized-name-models",
-    slug: "personalized-name-models",
-    name: "Personalized Name Models",
-    shortDescription: "Custom typography, desktop initials, and illuminated name art.",
-    description: "Bespoke 3D printed typography crafted for modern desks, bedside stands, corporate workstations, and celebratory gifts.",
-    itemCount: "Bespoke Custom",
-    tagline: "Expressive personalized typographic art",
-    accentColor: "#B45309",
   },
 ];
 
