@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ShoppingBag,
   MessageCircle,
@@ -23,12 +24,14 @@ import {
   Gift,
   Heart,
   Share2,
+  Zap,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createProductWhatsAppUrl } from "@/lib/whatsapp";
 import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function ProductDetailView({ product }) {
+  const router = useRouter();
   const { addToCart, setIsDrawerOpen } = useCart();
 
   // Images for gallery
@@ -113,6 +116,33 @@ export default function ProductDetailView({ product }) {
     setTimeout(() => setAddedSuccess(false), 3000);
   };
 
+  // Instant Buy Now handler (Direct 1-Click to Checkout)
+  const handleBuyNow = () => {
+    const customization = {
+      Scale: selectedSize,
+      Finish: selectedFinish,
+      ...(personalizationText ? { "Personalization / Engraving": personalizationText } : {}),
+      ...(uploadedPhotos.length > 0
+        ? {
+            "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
+          }
+        : {}),
+    };
+
+    addToCart(
+      {
+        ...product,
+        price: currentUnitPrice,
+        hasPhoto: uploadedPhotos.length > 0,
+      },
+      quantity,
+      customization
+    );
+
+    // Instant redirect to checkout page
+    router.push("/cart");
+  };
+
   // Direct WhatsApp Order handler
   const handleDirectWhatsAppOrder = () => {
     const details = {
@@ -148,7 +178,7 @@ export default function ProductDetailView({ product }) {
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 pb-28 sm:pb-0">
       {/* Top Header: Breadcrumbs & Prev/Next Product Chevrons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-stone-500 pb-4 border-b border-stone-200">
         <div className="flex items-center gap-2 flex-wrap">
@@ -531,25 +561,38 @@ export default function ProductDetailView({ product }) {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            {/* Action Buttons: ⚡ Buy Now (Instant Checkout), Add to Cart, WhatsApp Order */}
+            <div className="space-y-3 pt-1">
+              {/* Primary ⚡ Buy Now Button (High-Converting Instant Checkout) */}
               <button
                 type="button"
-                onClick={handleAddToCart}
-                className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99] group"
+                onClick={handleBuyNow}
+                className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-linear-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-base shadow-lg shadow-amber-500/25 transition-all active:scale-[0.99] group cursor-pointer"
               >
-                <ShoppingBag className="w-4 h-4 text-amber-400 transition-transform group-hover:scale-110" />
-                <span>Add to Cart</span>
+                <Zap className="w-5 h-5 fill-current text-stone-950 transition-transform group-hover:scale-125" />
+                <span>⚡ Buy Now (Instant Checkout)</span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleDirectWhatsAppOrder}
-                className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99] group"
-              >
-                <MessageCircle className="w-4 h-4 fill-current transition-transform group-hover:scale-110" />
-                <span>Buy Now on WhatsApp</span>
-              </button>
+              {/* Secondary Buttons: Add to Cart & WhatsApp */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99] group cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4 text-amber-400 transition-transform group-hover:scale-110" />
+                  <span>Add to Cart</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDirectWhatsAppOrder}
+                  className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99] group cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 fill-current transition-transform group-hover:scale-110" />
+                  <span>Order on WhatsApp</span>
+                </button>
+              </div>
             </div>
 
             {/* Share on WhatsApp Button with OG Product Image */}
@@ -816,6 +859,38 @@ export default function ProductDetailView({ product }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Mobile Sticky Bottom Bar (High-Converting 1-Click Checkout on Small Screens) */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200/90 p-3 shadow-2xl">
+        <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+          <div className="flex flex-col min-w-[70px]">
+            <span className="text-[10px] uppercase font-bold text-stone-500 tracking-wider">Total</span>
+            <span className="text-base font-black text-stone-900 tabular-nums">
+              ₹{currentUnitPrice * quantity}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <button
+              type="button"
+              onClick={handleDirectWhatsAppOrder}
+              className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 transition-colors"
+              title="Chat & Order on WhatsApp"
+            >
+              <MessageCircle className="w-5 h-5 fill-current" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleBuyNow}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-sm shadow-md active:scale-98 transition-all cursor-pointer"
+            >
+              <Zap className="w-4 h-4 fill-current" />
+              <span>⚡ Buy Now</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

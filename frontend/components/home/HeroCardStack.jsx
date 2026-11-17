@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, useMotionValue } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { productsAPI } from "@/lib/api";
 import { resolveProductImage, DEFAULT_PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
@@ -255,69 +255,34 @@ export default function HeroCardStack({ initialProducts = [] }) {
             onSendToBack={sendToBack}
           />
         ))}
-
-        {/* Floating Left Chevron */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            cyclePrev();
-          }}
-          className="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-stone-50 text-stone-800 shadow-md border border-stone-200/90 flex items-center justify-center transition-all hover:scale-105 active:scale-90"
-          aria-label="Previous creation"
-        >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-stone-700" />
-        </button>
-
-        {/* Floating Right Chevron */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            cycleNext();
-          }}
-          className="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-stone-50 text-stone-800 shadow-md border border-stone-200/90 flex items-center justify-center transition-all hover:scale-105 active:scale-90"
-          aria-label="Next creation"
-        >
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-stone-700" />
-        </button>
       </div>
 
-      {/* Navigation Controls Bar */}
-      <div className="mt-5 flex items-center justify-between w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] px-1">
-        <div className="flex items-center gap-1.5">
+      {/* Clean Centered Scroll Status Points / Indicator Dots (All devices) */}
+      <div className="mt-5 flex items-center justify-center gap-1.5 w-full py-2">
+        {items.map((p, idx) => (
           <button
-            onClick={cyclePrev}
-            className="p-1.5 rounded-full bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 shadow-xs transition-transform active:scale-90"
-            aria-label="Previous card"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={cycleNext}
-            className="p-1.5 rounded-full bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 shadow-xs transition-transform active:scale-90"
-            aria-label="Next card"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[10px] font-bold text-stone-600 border border-stone-200 shadow-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
-          <span>Swipe or click chevrons</span>
-        </span>
-
-        {/* Counter Dots */}
-        <div className="flex items-center gap-1">
-          {items.map((p, idx) => (
-            <span
-              key={p.id}
-              className={`h-1.5 rounded-full transition-all duration-200 ${
-                idx === currentIndex ? "w-3.5 bg-amber-600" : "w-1.5 bg-stone-300"
-              }`}
-            />
-          ))}
-        </div>
+            key={p.id}
+            type="button"
+            onClick={() => {
+              if (idx !== currentIndex) {
+                setItems((prev) => {
+                  const copy = [...prev];
+                  const currentPos = copy.findIndex((item) => item.id === p.id);
+                  if (currentPos !== -1) {
+                    return [...copy.slice(currentPos + 1), ...copy.slice(0, currentPos + 1)];
+                  }
+                  return prev;
+                });
+              }
+            }}
+            className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+              idx === currentIndex
+                ? "w-6 bg-amber-600 shadow-xs shadow-amber-600/30"
+                : "w-2 bg-stone-300 hover:bg-stone-400"
+            }`}
+            aria-label={`Go to creation ${idx + 1}`}
+          />
+        ))}
       </div>
     </div>
   );

@@ -32,6 +32,8 @@ import {
   Ruler,
   Clock,
   Box,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { productsAPI, categoriesAPI } from "@/lib/api";
 import { CATEGORIES as DEFAULT_CATEGORIES } from "@/data/categories";
@@ -51,16 +53,6 @@ export default function AdminProductsPage() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // Category Manager Modal State
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [categorySubmitting, setCategorySubmitting] = useState(false);
-  const [categoryForm, setCategoryForm] = useState({
-    name: "",
-    shortDescription: "",
-    tagline: "",
-    accentColor: "#D97706",
-  });
 
   // Quick Add Category State (Inline in Product Modal)
   const [showQuickAddCategory, setShowQuickAddCategory] = useState(false);
@@ -151,26 +143,6 @@ export default function AdminProductsPage() {
       setError(err.message || "Failed to load products");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Add Category Handler
-  const handleCreateCategory = async (e) => {
-    e.preventDefault();
-    if (!categoryForm.name.trim()) return;
-
-    setCategorySubmitting(true);
-    try {
-      const res = await categoriesAPI.create(categoryForm);
-      if (res && res.category) {
-        showToast(`Category "${res.category.name}" created successfully! It now appears across the website.`);
-        setCategoryForm({ name: "", shortDescription: "", tagline: "", accentColor: "#D97706" });
-        await loadCategories();
-      }
-    } catch (err) {
-      alert("Failed to create category: " + err.message);
-    } finally {
-      setCategorySubmitting(false);
     }
   };
 
@@ -460,14 +432,14 @@ export default function AdminProductsPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Manage Categories Button */}
-          <button
-            onClick={() => setIsCategoryModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 font-semibold text-xs transition-colors shadow-2xs cursor-pointer"
+          {/* Manage Categories Link */}
+          <Link
+            href="/admin/categories"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 font-semibold text-xs transition-colors shadow-2xs"
           >
             <Layers className="w-4 h-4 text-amber-600" />
-            <span>Manage Categories ({categories.length})</span>
-          </button>
+            <span>Manage Categories & Priority ({categories.length}) →</span>
+          </Link>
 
           {/* Add New Product Button */}
           <button
@@ -688,163 +660,6 @@ export default function AdminProductsPage() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* DEDICATED CATEGORY MANAGEMENT MODAL */}
-      {/* ======================================================== */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <div>
-                <h3 className="font-serif font-bold text-base text-stone-900 flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-amber-600" />
-                  <span>Manage 3D Categories</span>
-                </h3>
-                <p className="text-xs text-stone-500">
-                  Add new categories or manage existing ones. Changes sync live across the storefront and filters.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCategoryModalOpen(false)}
-                className="p-1 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Create Category Form */}
-            <form onSubmit={handleCreateCategory} className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 space-y-3 text-xs">
-              <span className="font-bold text-xs text-amber-900 flex items-center gap-1.5">
-                <FolderPlus className="w-4 h-4 text-amber-700" />
-                <span>+ Add New Storefront Category</span>
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-stone-700">Category Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 3D Architectural Scale Models"
-                    value={categoryForm.name}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-stone-700">Tagline / Subheading</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Precision structural prototypes"
-                    value={categoryForm.tagline}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, tagline: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-stone-700">Short Description</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Highly detailed scale replicas for architects, builders, and developers."
-                  value={categoryForm.shortDescription}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, shortDescription: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-stone-600">Accent Color:</span>
-                  {["#D97706", "#92400E", "#7C3AED", "#2563EB", "#059669", "#DC2626"].map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setCategoryForm({ ...categoryForm, accentColor: color })}
-                      className={`w-5 h-5 rounded-full border-2 transition-transform cursor-pointer ${
-                        categoryForm.accentColor === color ? "border-stone-900 scale-125" : "border-transparent"
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={categorySubmitting}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                >
-                  {categorySubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Create Category</span>
-                </button>
-              </div>
-            </form>
-
-            {/* List of Existing Categories */}
-            <div className="space-y-2">
-              <span className="font-bold text-xs text-stone-800 block">
-                Existing Categories ({categories.length})
-              </span>
-
-              <div className="divide-y divide-stone-100 border border-stone-200 rounded-2xl overflow-hidden max-h-60 overflow-y-auto">
-                {categories.map((cat, idx) => (
-                  <div key={cat.id || cat.slug || idx} className="p-3 bg-stone-50/50 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.accentColor || "#D97706" }}
-                      />
-                      <div>
-                        <div className="font-semibold text-stone-900 flex items-center gap-2">
-                          <span>{cat.name}</span>
-                          <span className="font-mono text-[10px] text-stone-400 bg-stone-200/70 px-1.5 py-0.2 rounded">
-                            {cat.slug || cat.id}
-                          </span>
-                        </div>
-                        {cat.shortDescription && (
-                          <p className="text-[11px] text-stone-500 truncate max-w-sm">
-                            {cat.shortDescription}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-700">
-                        {cat.itemCount || `${cat.actualProductCount || 0} Items`}
-                      </span>
-                      {cat._id && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCategory(cat._id, cat.name)}
-                          className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50"
-                          title="Delete or de-activate category"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2 text-right">
-              <button
-                type="button"
-                onClick={() => setIsCategoryModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs"
-              >
-                Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

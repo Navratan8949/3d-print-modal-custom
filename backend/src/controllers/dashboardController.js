@@ -7,26 +7,37 @@ exports.getDashboardStats = async (req, res) => {
     const [
       totalOrders,
       pendingOrders,
+      confirmedOrders,
       inProductionOrders,
       shippedOrders,
       deliveredOrders,
+      cancelledOrders,
       totalProducts,
       totalUsers,
-      recentOrders,
       revenueAggregation,
+      allOrders,
+      allProducts,
     ] = await Promise.all([
       Order.countDocuments(),
       Order.countDocuments({ status: "pending" }),
+      Order.countDocuments({ status: "confirmed" }),
       Order.countDocuments({ status: "in_production" }),
       Order.countDocuments({ status: "shipped" }),
       Order.countDocuments({ status: "delivered" }),
+      Order.countDocuments({ status: "cancelled" }),
       Product.countDocuments({ status: "active" }),
       User.countDocuments({ role: "customer" }),
-      Order.find().sort({ createdAt: -1 }).limit(8),
       Order.aggregate([
         { $match: { status: { $ne: "cancelled" } } },
         { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
       ]),
+      Order.find()
+        .select("orderNumber status totalAmount items createdAt paymentStatus customer.name")
+        .sort({ createdAt: -1 })
+        .lean(),
+      Product.find({ status: "active" })
+        .select("name id slug category categoryId price image_url")
+        .lean(),
     ]);
 
     const totalRevenue =
@@ -37,14 +48,17 @@ exports.getDashboardStats = async (req, res) => {
       stats: {
         totalOrders,
         pendingOrders,
+        confirmedOrders,
         inProductionOrders,
         shippedOrders,
         deliveredOrders,
+        cancelledOrders,
         totalProducts,
         totalUsers,
         totalRevenue,
       },
-      recentOrders,
+      allOrders,
+      allProducts,
     });
   } catch (error) {
     console.error("Dashboard stats error:", error);

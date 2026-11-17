@@ -52,7 +52,7 @@ export default function FeaturedCategories() {
             <Link
               key={category.id || catSlug}
               href={`/shop?category=${catSlug}`}
-              className="group relative flex flex-col justify-between rounded-2xl bg-white border border-stone-200/90 shadow-2xs hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+              className="group relative flex flex-col justify-between rounded-2xl bg-white border border-stone-200 shadow-xs hover:shadow-xl hover:border-amber-400/80 transition-all duration-300 hover:-translate-y-1.5 overflow-hidden"
             >
               {/* Visual Header */}
               <div className="relative aspect-16/10 w-full overflow-hidden bg-stone-100">
@@ -60,14 +60,16 @@ export default function FeaturedCategories() {
                   <img
                     src={category.image_url}
                     alt={category.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                   />
                 ) : (
-                  <ProductVisual
-                    imageKey={imageKey}
-                    alt={category.name}
-                    aspectRatio="16/10"
-                  />
+                  <div className="w-full h-full group-hover:scale-105 transition-transform duration-500 ease-out">
+                    <ProductVisual
+                      imageKey={imageKey}
+                      alt={category.name}
+                      aspectRatio="16/10"
+                    />
+                  </div>
                 )}
               </div>
 
@@ -89,8 +91,8 @@ export default function FeaturedCategories() {
                   <span className="text-xs font-semibold text-stone-800 group-hover:text-amber-700 transition-colors">
                     View in Catalog
                   </span>
-                  <div className="p-1.5 rounded-full bg-stone-50 group-hover:bg-amber-100 text-stone-600 group-hover:text-amber-800 transition-colors">
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                  <div className="p-1.5 rounded-full bg-stone-100 group-hover:bg-amber-600 text-stone-600 group-hover:text-white transition-all duration-200 shadow-2xs">
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 duration-200" />
                   </div>
                 </div>
               </div>

@@ -393,7 +393,462 @@ export const PRODUCTS = [
       "Typography",
       "Desk Decor",
       "Gifts",
-      "Office"
+      "Office",
+      "3D Nameplate"
+    ]
+  },
+  {
+    "id": 108,
+    "sku": "3DVS-108",
+    "slug": "personalized-3d-desk-nameplate",
+    "name": "Personalized 3D Desk Nameplate",
+    "price": 599,
+    "originalPrice": 899,
+    "category": "Personalized Name Models",
+    "categoryId": "personalized-name-models",
+    "shortDescription": "Custom precision 3D printed desk nameplate with title and modern geometric base.",
+    "description": "Elevate your workstation with our Personalized 3D Desk Nameplate. Engineered with crisp typography, multi-layer high-contrast colors, and a heavy-duty angled base for ideal viewing from any office desk angle.",
+    "image_url": "/images/products/miniature-male.jpeg",
+    "images": [
+      "/images/products/miniature-male.jpeg",
+      "/images/products/cat-pen-stand.jpeg"
+    ],
+    "material": "Tough Matte PLA+ Compound",
+    "print_time": "3 hours 30 min",
+    "dimensions": "22 x 5 x 8 cm",
+    "weight_g": 95,
+    "rating": 4.9,
+    "review_count": 89,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "nameModel",
+    "availableOptions": {
+      "sizes": [
+        "Standard Desk (20 cm)",
+        "Executive Wide (25 cm)"
+      ],
+      "fontStyles": [
+        "Modern Sans Bold",
+        "Corporate Serif",
+        "Geometric Futuristic"
+      ],
+      "colorFinishes": [
+        "Matte Black & Gold Font",
+        "Ivory White & Walnut Base",
+        "Navy Blue & Silver"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Craftsmanship",
+        "value": "Dual-Color Co-Extrusion 3D Print"
+      },
+      {
+        "label": "Material",
+        "value": "Eco-friendly bio-degradable PLA+"
+      },
+      {
+        "label": "Max Text",
+        "value": "First Name + Last Name / Title"
+      },
+      {
+        "label": "Mounting",
+        "value": "Weighted self-standing desk plate"
+      }
+    ],
+    "tags": [
+      "Desk Nameplate",
+      "Office Decor",
+      "Personalized Gift",
+      "Name Stand",
+      "Corporate"
+    ]
+  },
+  {
+    "id": 109,
+    "sku": "3DVS-109",
+    "slug": "dual-tone-couple-name-sculpt",
+    "name": "Dual-Tone Couple 3D Name Sculpt with Heart Accent",
+    "price": 799,
+    "originalPrice": 1199,
+    "category": "Personalized Name Models",
+    "categoryId": "personalized-name-models",
+    "shortDescription": "Romantic interlocking 3D letters with sculpted heart symbol and anniversary date engraving.",
+    "description": "Celebrate your love story with an artisan-designed couple name sculpture. Two names gracefully merged with a central infinity heart, finished in dual-tone matte silk filaments. Ideal for weddings, anniversaries, and Valentine keepsakes.",
+    "image_url": "/images/products/flower-bouquet.jpeg",
+    "images": [
+      "/images/products/flower-bouquet.jpeg",
+      "/images/products/miniature-female.jpeg"
+    ],
+    "material": "Silk Gloss PolyLite PLA",
+    "print_time": "4 hours 15 min",
+    "dimensions": "24 x 5 x 9 cm",
+    "weight_g": 110,
+    "rating": 5.0,
+    "review_count": 147,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "nameModel",
+    "availableOptions": {
+      "sizes": [
+        "Standard (20 cm)",
+        "Grand Romance (28 cm)"
+      ],
+      "heartColor": [
+        "Crimson Ruby Heart",
+        "Metallic Rose Gold Heart",
+        "Golden Yellow Heart"
+      ],
+      "baseEngraving": [
+        "Anniversary Date (DD.MM.YYYY)",
+        "Infinity Symbol (∞)",
+        "Plain Minimalist Base"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Design Type",
+        "value": "Interlocking 3D Typographic Sculpture"
+      },
+      {
+        "label": "Colors",
+        "value": "Silk White + Crimson + Accent Base"
+      },
+      {
+        "label": "Anniversary Feature",
+        "value": "Embossed custom date on plinth"
+      }
+    ],
+    "tags": [
+      "Couple Gift",
+      "Anniversary",
+      "Wedding Keepsake",
+      "Personalized",
+      "Love",
+      "Heart Name"
+    ]
+  },
+  {
+    "id": 110,
+    "sku": "3DVS-110",
+    "slug": "illuminated-led-3d-name-stand",
+    "name": "Illuminated LED 3D Name Stand Night Light",
+    "price": 1199,
+    "originalPrice": 1699,
+    "category": "Personalized Name Models",
+    "categoryId": "personalized-name-models",
+    "shortDescription": "Custom 3D printed glowing nameplate with built-in warm LED illumination and USB power.",
+    "description": "Transform your name into a mesmerizing bedside nightlight. High-precision translucent 3D typography set into an eco-friendly wooden LED base, creating a gentle, soothing ambient glow for bedrooms and modern desks.",
+    "image_url": "/images/products/kanha-ji-idol.jpeg",
+    "images": [
+      "/images/products/kanha-ji-idol.jpeg",
+      "/images/products/miniature-male.jpeg"
+    ],
+    "material": "Translucent Diffusion Resin & Beechwood Base",
+    "print_time": "5 hours",
+    "dimensions": "22 x 6 x 11 cm",
+    "weight_g": 220,
+    "rating": 4.9,
+    "review_count": 94,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "nameModel",
+    "availableOptions": {
+      "lightColors": [
+        "Warm Golden Ambient (3000K)",
+        "Cool White Glow (6000K)",
+        "RGB Multicolor with Remote"
+      ],
+      "baseTypes": [
+        "Natural Solid Beechwood Base",
+        "Matte Obsidian Acrylic Base"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Lighting",
+        "value": "Energy-Efficient 5V USB LED Strip"
+      },
+      {
+        "label": "Diffusion",
+        "value": "Specialized Light-scattering 3D Polymer"
+      },
+      {
+        "label": "Power Cord",
+        "value": "1.2 Meter USB-A with on/off switch"
+      }
+    ],
+    "tags": [
+      "LED Nameplate",
+      "Night Light",
+      "Bedside Lamp",
+      "Gifts",
+      "Custom Name"
+    ]
+  },
+  {
+    "id": 111,
+    "sku": "3DVS-111",
+    "slug": "executive-office-acrylic-3d-nameplate",
+    "name": "Executive Office 3D Desk Nameplate & Designation",
+    "price": 899,
+    "originalPrice": 1299,
+    "category": "Personalized Name Models",
+    "categoryId": "personalized-name-models",
+    "shortDescription": "Corporate executive desk sign with name, professional designation, and corporate insignia.",
+    "description": "Designed for leaders, doctors, lawyers, and entrepreneurs. Features ultra-crisp dual-layer 3D printed letters with metallic gold and carbon black styling on a chamfered architectural plinth.",
+    "image_url": "/images/products/muscular-pen-stand.jpeg",
+    "images": [
+      "/images/products/muscular-pen-stand.jpeg",
+      "/images/products/cat-pen-stand.jpeg"
+    ],
+    "material": "Carbon Black PETG & Metallic Gold Inlay",
+    "print_time": "4 hours",
+    "dimensions": "25 x 5 x 7 cm",
+    "weight_g": 130,
+    "rating": 4.8,
+    "review_count": 62,
+    "is_featured": false,
+    "isCustomizable": true,
+    "customizationType": "nameModel",
+    "availableOptions": {
+      "finishes": [
+        "Executive Gold on Matte Charcoal",
+        "Brushed Silver on Deep Obsidian",
+        "Pure White on Royal Teak"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Target Use",
+        "value": "CEO, Manager, Doctor, Advocate, Founder Desks"
+      },
+      {
+        "label": "Lettering",
+        "value": "3D Embossed 4mm Relief Typography"
+      }
+    ],
+    "tags": [
+      "Corporate",
+      "Office",
+      "Executive",
+      "Doctor Nameplate",
+      "Founder Gift"
+    ]
+  },
+  {
+    "id": 112,
+    "sku": "3DVS-112",
+    "slug": "couple-wedding-3d-miniature",
+    "name": "Couple Wedding & Anniversary 3D Miniature Statue",
+    "price": 2499,
+    "originalPrice": 3499,
+    "category": "Custom 3D Figurines",
+    "categoryId": "custom-3d-figurines",
+    "shortDescription": "Romantic wedding, engagement, or anniversary couple statue handcrafted from your photos.",
+    "description": "Immortalize your wedding day or milestone anniversary in stunning three dimensions. Captures sherwani, lehenga, tuxedos, and gentle expressions with museum-grade UV resin and artisan hand-painting.",
+    "image_url": "/images/products/fullbody-figurine-hero.jpeg",
+    "images": [
+      "/images/products/fullbody-figurine-hero.jpeg",
+      "/images/products/miniature-female.jpeg",
+      "/images/products/miniature-male.jpeg"
+    ],
+    "material": "8K Micro-Resolution UV Resin & Solid Oak Plinth",
+    "print_time": "3-4 working days",
+    "dimensions": "15 - 22 cm height",
+    "weight_g": 260,
+    "rating": 5.0,
+    "review_count": 210,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "figurine",
+    "availableOptions": {
+      "sizes": [
+        "Standard Desk (15 cm)",
+        "Medium Display (18 cm)",
+        "Grand Centerpiece (22 cm)"
+      ],
+      "attireStyles": [
+        "Indian Traditional (Sherwani & Lehenga)",
+        "Western Formal (Tuxedo & Gown)",
+        "Casual Smart Outfit"
+      ],
+      "baseTypes": [
+        "Natural Polished Oak Base",
+        "Engraved Date & Couple Names Base"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Likeness Guarantee",
+        "value": "Digital 3D preview approved before 3D manufacturing"
+      },
+      {
+        "label": "Detailing",
+        "value": "Photorealistic hair, face, and clothing folds"
+      },
+      {
+        "label": "Required Photos",
+        "value": "1-3 clear front & side view photos"
+      }
+    ],
+    "tags": [
+      "Couple Miniature",
+      "Wedding Statue",
+      "Anniversary Gift",
+      "3D Figurine",
+      "Romantic"
+    ]
+  },
+  {
+    "id": 113,
+    "sku": "3DVS-113",
+    "slug": "family-portrait-3d-figurine",
+    "name": "Family Portrait Handcrafted 3D Figurine Diorama",
+    "price": 3999,
+    "originalPrice": 5499,
+    "category": "Custom 3D Figurines",
+    "categoryId": "custom-3d-figurines",
+    "shortDescription": "Cherished multi-person family grouping sculpted into a lasting keepsake diorama.",
+    "description": "Bring the whole family together in a timeless 3D centerpiece. Recreates 3 to 5 family members on a cohesive engraved plinth with photorealistic attention to detail. The ultimate heirloom keepsake.",
+    "image_url": "/images/products/fullbody-figurine-hero.jpeg",
+    "images": [
+      "/images/products/fullbody-figurine-hero.jpeg",
+      "/images/products/miniature-male.jpeg"
+    ],
+    "material": "Ultra-HD Photopolymer Resin & Heavy Plinth",
+    "print_time": "4-5 working days",
+    "dimensions": "28 x 14 x 18 cm",
+    "weight_g": 450,
+    "rating": 5.0,
+    "review_count": 86,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "figurine",
+    "availableOptions": {
+      "familySizes": [
+        "3 Members (Parents + 1 Child)",
+        "4 Members (Parents + 2 Children)",
+        "5+ Members / Multi-generation"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Sculpt Type",
+        "value": "Custom Multi-Figure Group Composition"
+      },
+      {
+        "label": "Finishing",
+        "value": "Protective UV-resistant matte sealer"
+      }
+    ],
+    "tags": [
+      "Family Gift",
+      "Miniature",
+      "Heirloom",
+      "Family Statue",
+      "3D Figurine"
+    ]
+  },
+  {
+    "id": 114,
+    "sku": "3DVS-114",
+    "slug": "pet-realistic-3d-miniature",
+    "name": "Pet Realistic 3D Miniature Sculpture from Photo",
+    "price": 1299,
+    "originalPrice": 1799,
+    "category": "Custom 3D Figurines",
+    "categoryId": "custom-3d-figurines",
+    "shortDescription": "Lifelike handcrafted 3D sculpture of your beloved dog, cat, or pet from photo.",
+    "description": "Honor your four-legged family member with an incredibly realistic 3D portrait statue. Captures fur texture, ear angles, and unique coat markings with precision resin craft and custom pet name collar.",
+    "image_url": "/images/products/cat-pen-stand.jpeg",
+    "images": [
+      "/images/products/cat-pen-stand.jpeg",
+      "/images/products/fullbody-figurine-hero.jpeg"
+    ],
+    "material": "High-Density Sculpted Resin",
+    "print_time": "2-3 working days",
+    "dimensions": "10 - 15 cm length",
+    "weight_g": 140,
+    "rating": 4.9,
+    "review_count": 104,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "figurine",
+    "availableOptions": {
+      "petTypes": [
+        "Dog (All Breeds: Labrador, Golden, Indie, Pug)",
+        "Cat (Persian, Indie, Siamese)",
+        "Other Beloved Pet"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Sculpt",
+        "value": "Anatomically accurate pet pose from photos"
+      },
+      {
+        "label": "Personalization",
+        "value": "Custom embossed pet name on pedestal"
+      }
+    ],
+    "tags": [
+      "Pet Miniature",
+      "Dog Statue",
+      "Cat Miniature",
+      "Pet Keepsake",
+      "Pet Memorial"
+    ]
+  },
+  {
+    "id": 115,
+    "sku": "3DVS-115",
+    "slug": "superhero-doctor-face-3d-miniature",
+    "name": "Custom Doctor & Superhero Face 3D Miniature",
+    "price": 1799,
+    "originalPrice": 2499,
+    "category": "Custom 3D Figurines",
+    "categoryId": "custom-3d-figurines",
+    "shortDescription": "Your real 3D face sculpted onto a Doctor coat, Superhero suit, or Graduation caricature.",
+    "description": "The ultimate celebratory gift for doctors, engineers, graduates, and comic fans! We 3D sculpt your real face with 100% likeness onto an iconic heroic body with cape, stethoscope, or graduation scroll.",
+    "image_url": "/images/products/miniature-male.jpeg",
+    "images": [
+      "/images/products/miniature-male.jpeg",
+      "/images/products/fullbody-figurine-hero.jpeg"
+    ],
+    "material": "8K Resin Head & Tough Composite Body",
+    "print_time": "3 working days",
+    "dimensions": "16 - 20 cm height",
+    "weight_g": 180,
+    "rating": 4.9,
+    "review_count": 133,
+    "is_featured": true,
+    "isCustomizable": true,
+    "customizationType": "figurine",
+    "availableOptions": {
+      "bodyThemes": [
+        "Medical Doctor with Stethoscope & Coat",
+        "Superhero (Iron Suit, Bat Cape, Super Emblem)",
+        "Academic Graduation Gown with Degree Scroll",
+        "Corporate Executive Suit"
+      ]
+    },
+    "specifications": [
+      {
+        "label": "Facial Likeness",
+        "value": "Custom photorealistic face sculpting from your selfie"
+      },
+      {
+        "label": "Body",
+        "value": "Themed caricature body with high detail accessories"
+      }
+    ],
+    "tags": [
+      "Superhero Figurine",
+      "Doctor Gift",
+      "Graduation Keepsake",
+      "3D Caricature",
+      "Face Miniature"
     ]
   },
   {

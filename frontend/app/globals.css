@@ -19,7 +19,7 @@
     color: #1C1917;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
@@ -28,7 +28,7 @@
     min-height: 100vh;
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     position: relative;
   }
 }
@@ -55,6 +55,38 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #B8ADA0;
+}
+
+/* Small devices (Mobile & Tablets): sleek 4px scrollbar */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #D6CEC5;
+    border-radius: 9999px;
+  }
+
+  * {
+    scrollbar-width: thin;
+  }
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  height: 0px;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Neo-brutalist & Marquee styles */

@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   Search,
   Filter,
+  Calendar,
   MessageCircle,
   Clock,
   Package,
@@ -303,49 +304,49 @@ function AdminOrdersContent() {
     switch (status) {
       case "pending":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-            <Clock className="w-3 h-3 text-amber-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase rounded-full bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
             <span>Pending Review</span>
           </span>
         );
       case "confirmed":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-blue-50 text-blue-800 border border-blue-200">
-            <CheckCircle className="w-3 h-3 text-blue-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase rounded-full bg-blue-50 text-blue-800 border border-blue-300 shadow-2xs">
+            <CheckCircle className="w-3.5 h-3.5 text-blue-600" />
             <span>Confirmed</span>
           </span>
         );
       case "in_production":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-200">
-            <Package className="w-3 h-3 text-purple-600" />
-            <span>Processing</span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-50 text-purple-800 border border-purple-300 shadow-2xs">
+            <Package className="w-3.5 h-3.5 text-purple-600" />
+            <span>In Production</span>
           </span>
         );
       case "shipped":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-            <Truck className="w-3 h-3 text-indigo-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase rounded-full bg-indigo-50 text-indigo-800 border border-indigo-300 shadow-2xs">
+            <Truck className="w-3.5 h-3.5 text-indigo-600" />
             <span>Shipped</span>
           </span>
         );
       case "delivered":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <Check className="w-3 h-3 text-emerald-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+            <Check className="w-3.5 h-3.5 text-emerald-600" />
             <span>Delivered</span>
           </span>
         );
       case "cancelled":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-rose-50 text-rose-800 border border-rose-200">
-            <XCircle className="w-3 h-3 text-rose-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase rounded-full bg-rose-50 text-rose-800 border border-rose-300 shadow-2xs">
+            <XCircle className="w-3.5 h-3.5 text-rose-600" />
             <span>Cancelled</span>
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-stone-100 text-stone-700">
+          <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-stone-100 text-stone-700 border border-stone-200">
             {status}
           </span>
         );
@@ -447,64 +448,301 @@ function AdminOrdersContent() {
                 key={ord._id}
                 className="bg-white rounded-3xl border border-stone-200/90 shadow-2xs overflow-hidden transition-all hover:shadow-xs"
               >
-                {/* 1. TOP BAR: Identification, Payment Badge, and 1-Click Operations */}
-                <div className="p-4 sm:p-5 bg-stone-50/80 border-b border-stone-100 flex flex-wrap items-center justify-between gap-3">
+                {/* 1. TOP HEADER: Order ID, Date & Distinct Status Display */}
+                <div className="px-5 py-3.5 bg-stone-50/90 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-3">
+                  {/* Left: Order ID, Creation Date/Time & Source */}
                   <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                     <Link
                       href={`/admin/orders/${ord._id}`}
-                      className="font-mono font-bold text-sm text-stone-900 hover:text-amber-600 transition-colors flex items-center gap-1.5"
+                      className="font-mono font-bold text-sm text-stone-900 hover:text-amber-600 transition-colors flex items-center gap-1.5 group"
                       title="Open dedicated order detail page"
                     >
-                      <span>#{ord.orderNumber}</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
+                      <span className="group-hover:underline">#{ord.orderNumber}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-600" />
                     </Link>
 
-                    {getStatusBadge(ord.status)}
+                    <span className="text-stone-300 hidden sm:inline">|</span>
 
-                    {/* Payment Badge & 1-Click Quick Toggle */}
-                    <div className="flex items-center gap-1.5">
-                      {isPaid ? (
-                        <span
-                          className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300/80"
-                          title={ord.razorpayPaymentId ? `Razorpay: ${ord.razorpayPaymentId}` : "Marked as Paid manually"}
-                        >
-                          <Check className="w-3 h-3 text-emerald-700" />
-                          <span>Paid {ord.razorpayPaymentId ? "(Razorpay)" : "(Verified)"}</span>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePayment(ord)}
-                          disabled={isBusy}
-                          className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors cursor-pointer"
-                          title="Click to mark this order as Paid (Offline UPI / Cash)"
-                        >
-                          <CreditCard className="w-3 h-3 text-amber-700" />
-                          <span>Unpaid (Mark Paid 💰)</span>
-                        </button>
-                      )}
+                    {/* Order Date & Time */}
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
+                      <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                      <span>
+                        {new Date(ord.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <span className="text-stone-400">•</span>
+                      <span className="text-stone-500 font-mono text-[11px]">
+                        {new Date(ord.createdAt).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </span>
                     </div>
 
-                    <span className="text-[11px] text-stone-400">
-                      {new Date(ord.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    {ord.orderSource && (
+                      <span className="px-2 py-0.5 rounded-full bg-stone-200/70 text-stone-600 text-[10px] font-semibold uppercase tracking-wider">
+                        {ord.orderSource}
+                      </span>
+                    )}
                   </div>
 
-                  {/* 1-Click Step-by-Step Pipeline Buttons */}
+                  {/* Right: STATUS SEPARATED & HIGHLY VISIBLE */}
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                    {/* Order Lifecycle Status */}
+                    {getStatusBadge(ord.status)}
+
+                    {/* Payment Status Badge & 1-Click Toggle */}
+                    {isPaid ? (
+                      <span
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                        title={ord.razorpayPaymentId ? `Razorpay: ${ord.razorpayPaymentId}` : "Paid via Razorpay / Verified"}
+                      >
+                        <Check className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Paid</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePayment(ord)}
+                        disabled={isBusy}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold uppercase rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors cursor-pointer shadow-2xs"
+                        title="Click to mark this order as Paid (Offline UPI / Cash)"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Unpaid (Mark Paid 💰)</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. MIDDLE CONTENT: 3-Column Structured Layout (Customer, Items, Logistics & Financials) */}
+                <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Customer & Delivery Address (4 cols) */}
+                  <div className="md:col-span-4 space-y-2.5 text-xs text-stone-600 border-b md:border-b-0 md:border-r border-stone-100 pb-4 md:pb-0 md:pr-6">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                      Customer & Delivery Details
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
+                        <User className="w-4 h-4 text-stone-400 shrink-0" />
+                        <span>{ord.customer?.name || "Customer"}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        <a
+                          href={`tel:${ord.customer?.phone}`}
+                          className="font-mono text-stone-800 hover:text-amber-600 font-semibold"
+                        >
+                          {ord.customer?.phone || "No phone"}
+                        </a>
+                      </div>
+
+                      {ord.customer?.email && (
+                        <div className="text-[11px] text-stone-500 truncate pl-5">
+                          {ord.customer?.email}
+                        </div>
+                      )}
+
+                      <div className="flex items-start gap-2 pt-1 text-[11px] text-stone-600 leading-relaxed">
+                        <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                        <span>
+                          {[
+                            ord.customer?.address,
+                            ord.customer?.city,
+                            ord.customer?.state,
+                            ord.customer?.pincode ? `- ${ord.customer?.pincode}` : "",
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {ord.customer?.notes && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-[11px]">
+                        <strong className="block text-[10px] uppercase font-bold text-amber-800">Customer Note:</strong>
+                        {ord.customer.notes}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Center Column: Ordered Products & Customizations (5 cols) */}
+                  <div className="md:col-span-5 space-y-3 border-b md:border-b-0 md:border-r border-stone-100 pb-4 md:pb-0 md:pr-6">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                      Ordered Products ({ord.items?.length || 0})
+                    </div>
+
+                    <div className="space-y-3">
+                      {ord.items?.map((item, idx) => {
+                        const itemImg = getOrderItemImage(item);
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-3 text-xs bg-stone-50/60 p-2.5 rounded-2xl border border-stone-100"
+                          >
+                            <div className="relative shrink-0">
+                              <img
+                                src={itemImg}
+                                alt={item.name}
+                                className="w-14 h-14 object-cover rounded-xl border border-stone-200 bg-stone-100 shadow-2xs"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                                }}
+                              />
+                              {item.referencePhotoUrl && (
+                                <a
+                                  href={item.referencePhotoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700"
+                                  title="View Customer Reference Photo"
+                                >
+                                  <Camera className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-stone-900 text-sm truncate">{item.name}</div>
+                              <div className="text-[11px] text-stone-500 font-medium mt-0.5">
+                                Qty: <span className="font-bold text-stone-800">{item.quantity}</span> • ₹{item.price} each
+                              </div>
+
+                              {item.customization && Object.keys(item.customization).length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                  {Object.entries(item.customization).map(([k, v]) =>
+                                    v ? (
+                                      <span
+                                        key={k}
+                                        className="px-2 py-0.5 text-[10px] bg-white text-stone-700 font-medium rounded-md border border-stone-200/90 shadow-2xs"
+                                      >
+                                        <strong className="text-stone-500 font-semibold">{k}:</strong> {String(v)}
+                                      </span>
+                                    ) : null
+                                  )}
+                                </div>
+                              )}
+
+                              {item.hasPhoto && (
+                                <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-amber-700 font-semibold">
+                                  <Camera className="w-3 h-3" /> Custom photo uploaded
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Pricing & Courier Logistics (3 cols) */}
+                  <div className="md:col-span-3 space-y-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                      Payment & Tracking
+                    </div>
+
+                    {/* Price Block */}
+                    <div className="bg-stone-50 p-3 rounded-2xl border border-stone-100 space-y-1">
+                      <span className="text-[10px] font-semibold text-stone-500 block">Total Amount</span>
+                      <div className="text-2xl font-serif font-black text-stone-900">
+                        ₹{ord.totalAmount}
+                      </div>
+                      <div className="text-[10px] text-stone-500 flex items-center justify-between">
+                        <span>{ord.itemCount || ord.items?.length} item(s)</span>
+                        <span className="capitalize font-semibold text-stone-700">
+                          {ord.paymentMethod || (isPaid ? "Razorpay" : "COD")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Courier / Tracking Block */}
+                    <div className="bg-stone-50 p-3 rounded-2xl border border-stone-100 space-y-1.5">
+                      <span className="text-[10px] font-semibold text-stone-500 block">Logistics / Courier</span>
+                      {ord.tracking?.trackingNumber ? (
+                        <div className="space-y-1">
+                          <div className="font-bold text-xs text-stone-800 flex items-center gap-1.5">
+                            <Truck className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{ord.tracking.courierName || "Courier"}</span>
+                          </div>
+                          <div className="font-mono text-[11px] text-stone-600 bg-white px-2 py-0.5 rounded border border-stone-200">
+                            {ord.tracking.trackingNumber}
+                          </div>
+                          {(() => {
+                            const trackUrl =
+                              ord.tracking.trackingUrl ||
+                              COURIER_PRESETS.find(
+                                (p) => p.name.toLowerCase() === ord.tracking.courierName?.toLowerCase()
+                              )?.url(ord.tracking.trackingNumber);
+                            return trackUrl ? (
+                              <a
+                                href={trackUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-lg border border-amber-300 font-bold transition-colors cursor-pointer mt-1"
+                                title="Open Live Courier Tracking in New Tab"
+                              >
+                                <Truck className="w-3 h-3 text-amber-700" />
+                                <span>Track Live ↗</span>
+                              </a>
+                            ) : null;
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-stone-400 italic py-1">
+                          No tracking assigned yet
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. DEDICATED ACTIONS BAR AT THE BOTTOM (actions buttom me ho) */}
+                <div className="px-5 py-3.5 bg-stone-50/90 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3">
+                  {/* Left: Quick Status Dropdown & Delete Action */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-stone-500">Status:</span>
+                    <select
+                      value={ord.status}
+                      disabled={isBusy}
+                      onChange={(e) => handleStatusChange(ord._id, e.target.value)}
+                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-white border border-stone-200 text-stone-800 focus:outline-hidden focus:border-amber-600 shadow-2xs cursor-pointer"
+                      title="Directly update status"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="in_production">In Production</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(ord._id, ord.orderNumber)}
+                      className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                      title={`Delete Order #${ord.orderNumber}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Right: Primary Pipeline Transition & Quick Helper Buttons */}
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Primary Stage Transition Button */}
+                    {/* 1-Click Primary Pipeline Action Button */}
                     {ord.status === "pending" && (
                       <button
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleStatusChange(ord._id, "confirmed")}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-colors cursor-pointer"
-                        title="Confirm specs and accept order"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer"
+                        title="Approve specs & confirm order"
                       >
                         {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                         <span>Approve & Confirm</span>
@@ -516,8 +754,8 @@ function AdminOrdersContent() {
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleStatusChange(ord._id, "in_production")}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-2xs transition-colors cursor-pointer"
-                        title="Send model to 3D printing queue"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition-colors cursor-pointer"
+                        title="Start 3D Printing Process"
                       >
                         {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />}
                         <span>Start 3D Print</span>
@@ -529,7 +767,7 @@ function AdminOrdersContent() {
                         type="button"
                         disabled={isBusy}
                         onClick={() => openDispatchModal(ord)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer"
                         title="3D printing complete! Assign tracking & ship"
                       >
                         <Truck className="w-3.5 h-3.5" />
@@ -542,7 +780,7 @@ function AdminOrdersContent() {
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleStatusChange(ord._id, "delivered")}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
                         title="Confirm package reached customer"
                       >
                         {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
@@ -551,187 +789,42 @@ function AdminOrdersContent() {
                     )}
 
                     {ord.status === "delivered" && (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl">
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 rounded-xl">
+                        <Check className="w-3.5 h-3.5 text-emerald-700" />
                         <span>Fulfilled</span>
                       </span>
                     )}
 
-                    {/* Quick Tracking Button */}
+                    {/* Logistics Dispatch Modal Button */}
                     <button
                       type="button"
                       onClick={() => openDispatchModal(ord)}
-                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
-                      title="Update Courier / AWB / Tracking"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 hover:border-stone-300 shadow-2xs transition-colors cursor-pointer"
+                      title="Assign or Update Courier / AWB"
                     >
-                      Logistics
+                      <Truck className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Logistics</span>
                     </button>
 
-                    {/* Smart WhatsApp Trigger */}
+                    {/* WhatsApp Message Drawer Button */}
                     <button
                       type="button"
                       onClick={() => setWhatsAppMenuOrder(ord)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
                       title="Open Smart WhatsApp Message Drawer"
                     >
                       <MessageCircle className="w-3.5 h-3.5 text-emerald-600 fill-current" />
                       <span>WhatsApp</span>
                     </button>
 
-                    {/* Detail Page Link */}
+                    {/* View Detail Page Button */}
                     <Link
                       href={`/admin/orders/${ord._id}`}
-                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-colors shadow-2xs"
                     >
-                      View ↗
+                      <span>View Order</span>
+                      <ExternalLink className="w-3 h-3 text-stone-300" />
                     </Link>
-
-                    {/* Fallback Status Dropdown */}
-                    <select
-                      value={ord.status}
-                      disabled={isBusy}
-                      onChange={(e) => handleStatusChange(ord._id, e.target.value)}
-                      className="px-2 py-1 text-xs font-semibold rounded-lg bg-white border border-stone-200 text-stone-700 focus:outline-hidden focus:border-amber-600 cursor-pointer"
-                      title="Force change status"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="in_production">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 2. ORDER CARD CONTENT: Customer, Items, Specs, and Tracking */}
-                <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                  {/* Customer Info (Left - 4 Cols) */}
-                  <div className="md:col-span-4 space-y-1.5 text-xs text-stone-600 border-b md:border-b-0 md:border-r border-stone-100 pb-4 md:pb-0 md:pr-4">
-                    <div className="flex items-center gap-2 font-semibold text-stone-900">
-                      <User className="w-3.5 h-3.5 text-stone-400" />
-                      <span>{ord.customer?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-stone-400" />
-                      <a href={`tel:${ord.customer?.phone}`} className="font-mono text-stone-800 hover:text-amber-600">
-                        {ord.customer?.phone}
-                      </a>
-                    </div>
-                    {ord.customer?.email && (
-                      <div className="text-[11px] text-stone-500 truncate">
-                        {ord.customer?.email}
-                      </div>
-                    )}
-                    <div className="flex items-start gap-2 pt-1 text-[11px] text-stone-500">
-                      <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
-                      <span>
-                        {ord.customer?.address}, {ord.customer?.city}, {ord.customer?.state} - {ord.customer?.pincode}
-                      </span>
-                    </div>
-
-                    {ord.customer?.notes && (
-                      <div className="mt-2 p-2 rounded-xl bg-amber-50/70 border border-amber-200/70 text-amber-900 text-[11px]">
-                        <strong>Customer Note:</strong> {ord.customer.notes}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Items Info (Middle - 5 Cols) */}
-                  <div className="md:col-span-5 space-y-2.5">
-                    {ord.items?.map((item, idx) => {
-                      const itemImg = getOrderItemImage(item);
-                      return (
-                        <div key={idx} className="flex items-start gap-3 text-xs">
-                          <div className="relative shrink-0">
-                            <img
-                              src={itemImg}
-                              alt={item.name}
-                              className="w-12 h-12 object-cover rounded-xl border border-stone-200 bg-stone-100 shadow-2xs"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
-                              }}
-                            />
-                            {item.referencePhotoUrl && (
-                              <a
-                                href={item.referencePhotoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700"
-                                title="View Customer Reference Photo"
-                              >
-                                <Camera className="w-2.5 h-2.5" />
-                              </a>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-stone-900 truncate">{item.name}</div>
-                            <div className="text-[11px] text-stone-500">
-                              Qty: {item.quantity} • ₹{item.price} each
-                            </div>
-
-                            {item.customization && Object.keys(item.customization).length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {Object.entries(item.customization).map(([k, v]) =>
-                                  v ? (
-                                    <span
-                                      key={k}
-                                      className="px-1.5 py-0.5 text-[9px] bg-stone-100 text-stone-700 rounded border border-stone-200"
-                                    >
-                                      <strong>{k}:</strong> {String(v)}
-                                    </span>
-                                  ) : null
-                                )}
-                              </div>
-                            )}
-
-                            {item.hasPhoto && (
-                              <span className="inline-block mt-0.5 text-[10px] text-amber-700 font-semibold">
-                                📸 Custom reference photo provided
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Amount & Active Tracking (Right - 3 Cols) */}
-                  <div className="md:col-span-3 text-right space-y-2 border-t md:border-t-0 md:border-l border-stone-100 pt-3 md:pt-0 md:pl-4">
-                    <div className="text-base font-serif font-bold text-stone-900">
-                      ₹{ord.totalAmount}
-                    </div>
-                    <div className="text-[10px] text-stone-400">
-                      {ord.itemCount || ord.items?.length} item(s) • Source: {ord.orderSource || "web"}
-                    </div>
-
-                    {ord.tracking?.trackingNumber ? (
-                      <div className="text-[11px] text-stone-600 space-y-1 text-right pt-2 border-t border-stone-100">
-                        <div className="font-semibold text-stone-800 flex items-center justify-end gap-1">
-                          <Truck className="w-3 h-3 text-amber-600" />
-                          <span>{ord.tracking.courierName || "Courier"}</span>
-                        </div>
-                        <div className="font-mono text-stone-700 text-[10px]">{ord.tracking.trackingNumber}</div>
-                        {ord.tracking.trackingUrl && (
-                          <a
-                            href={ord.tracking.trackingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[10px] text-amber-700 hover:underline font-semibold"
-                          >
-                            <span>Live Tracking</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="pt-2 border-t border-stone-100">
-                        <span className="inline-block text-[10px] text-stone-400 italic">
-                          No tracking assigned yet
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -829,9 +922,27 @@ function AdminOrdersContent() {
                   onChange={(e) => setDispatchForm({ ...dispatchForm, trackingUrl: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
                 />
-                <p className="text-[10px] text-stone-400">
-                  This direct tracking link will be emailed to the customer and shown in their order status page.
-                </p>
+                {dispatchForm.trackingUrl && (
+                  <div className="pt-1 flex items-center justify-between">
+                    <span className="text-[10px] text-stone-400">
+                      Live tracking link generated
+                    </span>
+                    <a
+                      href={dispatchForm.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 hover:text-amber-900 hover:underline"
+                    >
+                      <Truck className="w-3 h-3" />
+                      <span>Test Tracking Link ↗</span>
+                    </a>
+                  </div>
+                )}
+                {!dispatchForm.trackingUrl && (
+                  <p className="text-[10px] text-stone-400">
+                    This direct tracking link will be emailed to the customer and shown in their order status page.
+                  </p>
+                )}
               </div>
 
               {/* Internal / Studio Notes */}

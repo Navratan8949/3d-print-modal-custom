@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, ShoppingBag, MessageCircle, Menu, User as UserIcon, LogOut, Package, ShieldCheck, Sparkles } from "lucide-react";
+import { Search, ShoppingBag, MessageCircle, Menu, X, User as UserIcon, LogOut, Package, ShieldCheck, Sparkles } from "lucide-react";
 import Logo from "@/components/common/Logo";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -16,28 +16,75 @@ export default function Header() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const headerRef = useRef(null);
+  const [headerBottom, setHeaderBottom] = useState(64);
+
+  const updateHeaderBottom = () => {
+    if (headerRef.current) {
+      const rect = headerRef.current.getBoundingClientRect();
+      setHeaderBottom(Math.round(rect.bottom));
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
+    updateHeaderBottom();
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      updateHeaderBottom();
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 10);
+
+      // Top of page: always show
+      if (currentScrollY <= 40) {
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY.current && currentScrollY - lastScrollY.current > 4) {
+        // Scrolling DOWN: header slides down / stays visible ("niche scroll karne par aajae")
+        setIsVisible(true);
+      } else if (currentScrollY < lastScrollY.current && lastScrollY.current - currentScrollY > 4) {
+        // Scrolling UP: header slides up ("upr scroll karne par upar cala gae")
+        setIsVisible(false);
+      }
+      lastScrollY.current = currentScrollY;
     };
+
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setIsUserMenuOpen(false);
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", updateHeaderBottom);
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateHeaderBottom);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Update header bottom when mobile menu toggles & prevent body scroll
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      updateHeaderBottom();
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const navLinks = [
     { label: "Home", href: "/" },
@@ -49,22 +96,22 @@ export default function Header() {
   return (
     <>
       <header
-        className={`sticky top-0 z-40 w-full transition-colors duration-200 ${
-          isScrolled
-            ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-xs border-b border-stone-200/80"
-            : "bg-[#FAF8F5] border-b border-stone-200/50"
-        }`}
+        ref={headerRef}
+        className={`sticky top-0 z-50 w-full bg-white border-b border-stone-200/90 transition-transform duration-300 ease-in-out ${
+          isVisible || isMobileMenuOpen ? "translate-y-0" : "-translate-y-full"
+        } ${isScrolled ? "shadow-sm" : ""}`}
       >
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3 sm:gap-6 lg:gap-8 h-16 sm:h-20">
             {/* Zone 1: Single element brand mark */}
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-3">
               <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="p-1.5 text-stone-600 hover:text-stone-900 rounded-lg lg:hidden"
-                aria-label="Open navigation menu"
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-1.5 text-stone-600 hover:text-stone-900 rounded-lg lg:hidden transition-colors cursor-pointer"
+                aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
               >
-                <Menu className="w-5 h-5" />
+                {isMobileMenuOpen ? <X className="w-5 h-5 text-amber-700" /> : <Menu className="w-5 h-5" />}
               </button>
               <Logo />
             </div>
@@ -231,7 +278,11 @@ export default function Header() {
 
       {/* Modals */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        topOffset={headerBottom}
+      />
     </>
   );
 }
