@@ -31,9 +31,13 @@ import {
   Send,
   Zap,
   Info,
+  ZoomIn,
+  Download,
+  X,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
 import { getOrderItemImage } from "@/lib/orderImages";
+import { resolveProductImage } from "@/lib/imageUtils";
 
 // ==========================================
 // POPULAR INDIAN COURIER PRESETS
@@ -145,6 +149,7 @@ function AdminOrdersContent() {
 
   // Status updating indicator
   const [updatingId, setUpdatingId] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -581,6 +586,42 @@ function AdminOrdersContent() {
                     <div className="space-y-3">
                       {ord.items?.map((item, idx) => {
                         const itemImg = getOrderItemImage(item);
+                        const photoList = [
+                          ...(Array.isArray(item.referencePhotos) ? item.referencePhotos : []),
+                          ...(Array.isArray(item.customization?.referencePhotos)
+                            ? item.customization.referencePhotos
+                            : []),
+                          ...(item.referencePhotoUrl ? [item.referencePhotoUrl] : []),
+                          ...(item.customization?.referencePhotoUrl
+                            ? [item.customization.referencePhotoUrl]
+                            : []),
+                          ...(item.referencePhotos?.[0]?.url ? [item.referencePhotos[0].url] : []),
+                          ...(item.referencePhotos?.[0]?.preview
+                            ? [item.referencePhotos[0].preview]
+                            : []),
+                        ]
+                          .map((p) => (typeof p === "string" ? p : p?.url || p?.preview))
+                          .filter(Boolean);
+
+                        const uniquePhotos = Array.from(new Set(photoList));
+                        const primaryPhoto = uniquePhotos[0]
+                          ? resolveProductImage(uniquePhotos[0])
+                          : null;
+
+                        const nonPhotoSpecs = Object.entries(item.customization || {}).filter(
+                          ([k, v]) => {
+                            if (!v) return false;
+                            const lk = k.toLowerCase();
+                            return !lk.includes("photo") && !lk.includes("reference");
+                          }
+                        );
+
+                        const photoEntry = Object.entries(item.customization || {}).find(([k]) => {
+                          const lk = k.toLowerCase();
+                          return lk.includes("photo") || lk.includes("reference");
+                        });
+                        const attachedFilename = photoEntry ? String(photoEntry[1]) : null;
+
                         return (
                           <div
                             key={idx}
@@ -596,16 +637,15 @@ function AdminOrdersContent() {
                                   e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
                                 }}
                               />
-                              {item.referencePhotoUrl && (
-                                <a
-                                  href={item.referencePhotoUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700"
-                                  title="View Customer Reference Photo"
+                              {primaryPhoto && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewPhoto(primaryPhoto)}
+                                  className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
+                                  title={`View Customer Photo (${uniquePhotos.length})`}
                                 >
                                   <Camera className="w-3 h-3" />
-                                </a>
+                                </button>
                               )}
                             </div>
 
@@ -615,26 +655,38 @@ function AdminOrdersContent() {
                                 Qty: <span className="font-bold text-stone-800">{item.quantity}</span> • ₹{item.price} each
                               </div>
 
-                              {item.customization && Object.keys(item.customization).length > 0 && (
+                              {nonPhotoSpecs.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 mt-2">
-                                  {Object.entries(item.customization).map(([k, v]) =>
-                                    v ? (
-                                      <span
-                                        key={k}
-                                        className="px-2 py-0.5 text-[10px] bg-white text-stone-700 font-medium rounded-md border border-stone-200/90 shadow-2xs"
-                                      >
-                                        <strong className="text-stone-500 font-semibold">{k}:</strong> {String(v)}
-                                      </span>
-                                    ) : null
-                                  )}
+                                  {nonPhotoSpecs.map(([k, v]) => (
+                                    <span
+                                      key={k}
+                                      className="px-2 py-0.5 text-[10px] bg-white text-stone-700 font-medium rounded-md border border-stone-200/90 shadow-2xs"
+                                    >
+                                      <strong className="text-stone-500 font-semibold">{k}:</strong> {String(v)}
+                                    </span>
+                                  ))}
                                 </div>
                               )}
 
-                              {item.hasPhoto && (
+                              {uniquePhotos.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewPhoto(primaryPhoto)}
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-[10px] font-bold cursor-pointer transition-colors"
+                                  >
+                                    <Camera className="w-3 h-3 text-amber-600" />
+                                    <span>
+                                      View {uniquePhotos.length} Photo{uniquePhotos.length > 1 ? "s" : ""}
+                                    </span>
+                                    <ZoomIn className="w-2.5 h-2.5 text-amber-600" />
+                                  </button>
+                                </div>
+                              ) : (item.hasPhoto || attachedFilename) ? (
                                 <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-amber-700 font-semibold">
-                                  <Camera className="w-3 h-3" /> Custom photo uploaded
+                                  <Camera className="w-3 h-3" /> Photo: {attachedFilename || "Attached by customer"}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         );
@@ -1062,10 +1114,61 @@ function AdminOrdersContent() {
               <button
                 type="button"
                 onClick={() => setWhatsAppMenuOrder(null)}
-                className="w-full py-2 text-xs font-semibold rounded-xl bg-stone-100 text-stone-700 hover:bg-stone-200"
+                className="w-full py-2 text-xs font-semibold rounded-xl bg-stone-100 text-stone-700 hover:bg-stone-200 cursor-pointer"
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal for Uploaded Reference Photo */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-5 max-w-lg w-full space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-600" />
+                <h4 className="font-serif font-bold text-sm text-stone-900">
+                  Customer Reference Photo
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-xs transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-[65vh] overflow-auto flex items-center justify-center p-2 bg-stone-50 rounded-2xl border border-stone-100">
+              <img
+                src={previewPhoto}
+                alt="Customer reference"
+                className="max-h-[60vh] w-auto rounded-xl object-contain shadow-sm"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-stone-500 font-medium">Customer Upload</span>
+              <a
+                href={previewPhoto}
+                download="customer-reference-photo.jpg"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download HD Photo</span>
+              </a>
             </div>
           </div>
         </div>

@@ -12,6 +12,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const policyRoutes = require("./routes/policyRoutes");
 const activityLogger = require("./middleware/activityLogger");
 
 const app = express();
@@ -56,6 +57,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/policies", policyRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

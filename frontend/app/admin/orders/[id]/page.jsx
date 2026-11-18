@@ -31,9 +31,14 @@ import {
   CreditCard,
   Send,
   Zap,
+  ZoomIn,
+  Download,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
 import { getOrderItemImage } from "@/lib/orderImages";
+import { resolveProductImage } from "@/lib/imageUtils";
 
 // Indian Courier Presets
 const COURIER_PRESETS = [
@@ -129,6 +134,58 @@ export default function AdminOrderDetailPage({ params }) {
   const [copied, setCopied] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState(null);
+
+  const handleAdminAttachPhoto = async (itemIndex, files) => {
+    if (!files || files.length === 0) return;
+    try {
+      setUploadingPhotoIndex(itemIndex);
+      const fd = new FormData();
+      const fileList = Array.from(files);
+      fileList.forEach((f) => fd.append("photos", f));
+      fd.append("itemIndex", itemIndex);
+      fd.append("action", "append");
+
+      const res = await ordersAPI.updatePhotos(order._id || order.orderNumber, fd);
+      if (res?.success && res.order) {
+        setOrder(res.order);
+        setSuccessMsg(`Attached ${fileList.length} photo(s) to order successfully!`);
+        setTimeout(() => setSuccessMsg(""), 4000);
+      } else {
+        throw new Error(res?.message || "Failed to upload photo(s)");
+      }
+    } catch (err) {
+      console.error("Error attaching customer photo:", err);
+      setError(err?.message || "Failed to upload customer photo");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setUploadingPhotoIndex(null);
+    }
+  };
+
+  const handleAdminRemovePhoto = async (itemIndex, photoUrl) => {
+    if (!confirm("Are you sure you want to remove this reference photo from order?")) return;
+    try {
+      setUploadingPhotoIndex(itemIndex);
+      const res = await ordersAPI.updatePhotos(order._id || order.orderNumber, {
+        itemIndex,
+        action: "remove",
+        removedUrl: photoUrl,
+      });
+      if (res?.success && res.order) {
+        setOrder(res.order);
+        setSuccessMsg("Reference photo removed successfully.");
+        setTimeout(() => setSuccessMsg(""), 3000);
+      } else {
+        throw new Error(res?.message || "Failed to remove photo");
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to remove photo");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setUploadingPhotoIndex(null);
+    }
+  };
 
   // Form editable states
   const [status, setStatus] = useState("pending");
@@ -710,54 +767,266 @@ export default function AdminOrderDetailPage({ params }) {
                       </div>
                     </div>
 
-                    {/* Customization Details Box */}
-                    {item.customization && Object.keys(item.customization).length > 0 && (
-                      <div className="bg-amber-50/40 border border-amber-200/70 rounded-2xl p-3.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Custom 3D Fabrication Specs</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          {Object.entries(item.customization).map(([k, v]) =>
-                            v ? (
-                              <div key={k} className="p-2 bg-white/90 rounded-xl border border-amber-100">
-                                <span className="text-stone-500 block text-[10px] uppercase font-bold">{k}:</span>
-                                <span className="text-stone-900 font-medium">{String(v)}</span>
+                    {/* Customization Details Box & Customer Reference Photo Gallery */}
+                    {(() => {
+                      const nonPhotoSpecs = Object.entries(item.customization || {}).filter(
+                        ([k, v]) => {
+                          if (!v) return false;
+                          const lk = k.toLowerCase();
+                          return !lk.includes("photo") && !lk.includes("reference");
+                        }
+                      );
+
+                      const photoList = [
+                        ...(Array.isArray(item.referencePhotos) ? item.referencePhotos : []),
+                        ...(Array.isArray(item.customization?.referencePhotos)
+                          ? item.customization.referencePhotos
+                          : []),
+                        ...(item.referencePhotoUrl ? [item.referencePhotoUrl] : []),
+                        ...(item.customization?.referencePhotoUrl
+                          ? [item.customization.referencePhotoUrl]
+                          : []),
+                        ...(item.referencePhotos?.[0]?.url ? [item.referencePhotos[0].url] : []),
+                        ...(item.referencePhotos?.[0]?.preview
+                          ? [item.referencePhotos[0].preview]
+                          : []),
+                      ]
+                        .map((p) => (typeof p === "string" ? p : p?.url || p?.preview))
+                        .filter(Boolean);
+
+                      const uniquePhotos = Array.from(new Set(photoList));
+
+                      const photoEntry = Object.entries(item.customization || {}).find(([k]) => {
+                        const lk = k.toLowerCase();
+                        return lk.includes("photo") || lk.includes("reference");
+                      });
+                      const attachedFilename = photoEntry ? String(photoEntry[1]) : null;
+                      const hasAttachedNotice =
+                        item.hasPhoto || Boolean(attachedFilename) || uniquePhotos.length > 0;
+
+                      return (
+                        <div className="space-y-3">
+                          {/* 1. Custom 3D Fabrication Specs */}
+                          {nonPhotoSpecs.length > 0 && (
+                            <div className="bg-amber-50/40 border border-amber-200/70 rounded-2xl p-3.5 space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Custom 3D Fabrication Specs</span>
                               </div>
-                            ) : null
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                {nonPhotoSpecs.map(([k, v]) => (
+                                  <div
+                                    key={k}
+                                    className="p-2 bg-white/90 rounded-xl border border-amber-100"
+                                  >
+                                    <span className="text-stone-500 block text-[10px] uppercase font-bold">
+                                      {k}:
+                                    </span>
+                                    <span className="text-stone-900 font-medium">{String(v)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 2. Customer Reference Photos Gallery (Multiple Photos Display) */}
+                          {hasAttachedNotice && (
+                            <div className="rounded-2xl border border-amber-300 bg-amber-50/50 p-4 space-y-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <Camera className="w-4 h-4 text-amber-600 shrink-0" />
+                                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-950">
+                                    Customer Reference Photos ({uniquePhotos.length})
+                                  </h4>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {uniquePhotos.length > 0 ? (
+                                    <>
+                                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        ✓ {uniquePhotos.length} Photo
+                                        {uniquePhotos.length > 1 ? "s" : ""} Attached
+                                      </span>
+                                      {uniquePhotos.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            uniquePhotos.forEach((pUrl, pIdx) => {
+                                              const a = document.createElement("a");
+                                              a.href = resolveProductImage(pUrl);
+                                              a.download = `order-${order.orderNumber}-ref-${
+                                                pIdx + 1
+                                              }.jpg`;
+                                              a.target = "_blank";
+                                              document.body.appendChild(a);
+                                              a.click();
+                                              document.body.removeChild(a);
+                                            });
+                                          }}
+                                          className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                                        >
+                                          Download All HD
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
+                                      Action Required
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {uniquePhotos.length > 0 ? (
+                                <div className="space-y-3">
+                                  {/* Photo Grid */}
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                    {uniquePhotos.map((photoUrl, pIdx) => {
+                                      const resolvedSrc = resolveProductImage(photoUrl);
+                                      return (
+                                        <div
+                                          key={pIdx}
+                                          className="relative group rounded-xl overflow-hidden border-2 border-stone-200 hover:border-amber-500 bg-white shadow-2xs transition-all flex flex-col"
+                                        >
+                                          <span className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-stone-900/80 text-white font-mono font-bold text-[9px] shadow-sm">
+                                            #{pIdx + 1}
+                                          </span>
+
+                                          <div
+                                            onClick={() => setPreviewPhoto(resolvedSrc)}
+                                            className="relative aspect-square w-full bg-stone-100 overflow-hidden cursor-pointer"
+                                            title="Click to zoom HD reference photo"
+                                          >
+                                            <img
+                                              src={resolvedSrc}
+                                              alt={`Customer reference ${pIdx + 1}`}
+                                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                            />
+                                            <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                              <ZoomIn className="w-5 h-5 drop-shadow-md" />
+                                            </div>
+                                          </div>
+
+                                          <div className="p-1.5 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-1 text-[11px]">
+                                            <button
+                                              type="button"
+                                              onClick={() => setPreviewPhoto(resolvedSrc)}
+                                              className="p-1 text-stone-600 hover:text-amber-700 hover:bg-amber-100/50 rounded transition-colors cursor-pointer"
+                                              title="Zoom Photo"
+                                            >
+                                              <ZoomIn className="w-3.5 h-3.5" />
+                                            </button>
+                                            <a
+                                              href={resolvedSrc}
+                                              download={`order-${order.orderNumber}-ref-${
+                                                pIdx + 1
+                                              }.jpg`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="p-1 text-stone-600 hover:text-amber-700 hover:bg-amber-100/50 rounded transition-colors"
+                                              title="Download HD Photo"
+                                            >
+                                              <Download className="w-3.5 h-3.5" />
+                                            </a>
+                                            <button
+                                              type="button"
+                                              disabled={uploadingPhotoIndex === idx}
+                                              onClick={() =>
+                                                handleAdminRemovePhoto(idx, photoUrl)
+                                              }
+                                              className="p-1 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                                              title="Remove this photo"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+
+                                    {/* Upload More Card */}
+                                    <label className="rounded-xl border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/50 hover:bg-amber-100/60 p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors aspect-square min-h-[120px]">
+                                      {uploadingPhotoIndex === idx ? (
+                                        <Loader2 className="w-6 h-6 animate-spin text-amber-600 mb-1" />
+                                      ) : (
+                                        <Upload className="w-6 h-6 text-amber-600 mb-1" />
+                                      )}
+                                      <span className="text-[11px] font-bold text-amber-900 block">
+                                        {uploadingPhotoIndex === idx ? "Uploading..." : "+ Add More"}
+                                      </span>
+                                      <span className="text-[9px] text-amber-700 block">
+                                        Upload extra angles
+                                      </span>
+                                      <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        disabled={uploadingPhotoIndex === idx}
+                                        onChange={(e) =>
+                                          handleAdminAttachPhoto(idx, e.target.files)
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-2.5 p-3.5 bg-amber-100/60 rounded-xl border border-amber-300">
+                                  <p className="text-xs text-stone-800 leading-relaxed">
+                                    Customer attached reference file:{" "}
+                                    <strong className="font-mono font-bold text-amber-950 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                                      {attachedFilename || "Attached file"}
+                                    </strong>
+                                    . Since this file was recorded before live image storage, please request it on WhatsApp or upload it below:
+                                  </p>
+
+                                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                                    <a
+                                      href={`https://wa.me/91${order.customer?.phone?.replace(
+                                        /\D/g,
+                                        ""
+                                      )}?text=${encodeURIComponent(
+                                        `Hello ${order.customer?.name}! Prime 3D Studio is preparing your custom 3D printed Order #${order.orderNumber}. We see you attached reference photo "${
+                                          attachedFilename || "1 photo"
+                                        }". Could you please send it here on WhatsApp so our 3D artists can begin sculpt? 🎨`
+                                      )}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                                    >
+                                      <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                      <span>Request on WhatsApp</span>
+                                    </a>
+
+                                    <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-stone-300 hover:border-amber-500 text-stone-800 text-xs font-semibold shadow-xs cursor-pointer transition-colors">
+                                      {uploadingPhotoIndex === idx ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                                      ) : (
+                                        <Upload className="w-3.5 h-3.5 text-amber-600" />
+                                      )}
+                                      <span>
+                                        {uploadingPhotoIndex === idx
+                                          ? "Uploading & Attaching..."
+                                          : "Upload Customer's Photo Here"}
+                                      </span>
+                                      <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        disabled={uploadingPhotoIndex === idx}
+                                        onChange={(e) =>
+                                          handleAdminAttachPhoto(idx, e.target.files)
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Attached Reference Photo Banner */}
-                    {(item.hasPhoto || item.referencePhotoUrl) && (
-                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                            📸
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-stone-900">
-                              Reference Photo Attached by Customer
-                            </p>
-                            <p className="text-[11px] text-stone-500">
-                              Used for face sculpting, figurine proportioning, or custom 3D model geometry
-                            </p>
-                          </div>
-                        </div>
-
-                        {item.referencePhotoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setPreviewPhoto(item.referencePhotoUrl)}
-                            className="px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-stone-700 text-xs font-semibold hover:bg-stone-100 transition-colors shrink-0 cursor-pointer"
-                          >
-                            View Photo
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -1128,29 +1397,51 @@ export default function AdminOrderDetailPage({ params }) {
       {/* Lightbox Modal for Uploaded Reference Photo */}
       {previewPhoto && (
         <div
-          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setPreviewPhoto(null)}
         >
           <div
-            className="bg-white rounded-3xl p-4 max-w-lg w-full space-y-3 shadow-2xl"
+            className="bg-white rounded-3xl p-5 max-w-lg w-full space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <h4 className="font-serif font-bold text-sm text-stone-900">Customer Reference Photo</h4>
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-600" />
+                <h4 className="font-serif font-bold text-sm text-stone-900">
+                  Customer Reference Photo
+                </h4>
+              </div>
               <button
                 type="button"
                 onClick={() => setPreviewPhoto(null)}
-                className="text-stone-400 hover:text-stone-900 text-xs px-2 py-1 rounded-lg"
+                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-xs transition-colors cursor-pointer"
               >
-                ✕ Close
+                ✕
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto flex items-center justify-center">
+
+            <div className="max-h-[65vh] overflow-auto flex items-center justify-center p-2 bg-stone-50 rounded-2xl border border-stone-100">
               <img
-                src={previewPhoto}
+                src={resolveProductImage(previewPhoto)}
                 alt="Customer reference"
-                className="max-h-[65vh] w-auto rounded-xl object-contain shadow-sm"
+                className="max-h-[60vh] w-auto rounded-xl object-contain shadow-sm"
               />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-stone-500 font-mono">
+                Order #{order.orderNumber}
+              </span>
+              <a
+                href={resolveProductImage(previewPhoto)}
+                download={`order-${order.orderNumber}-customer-photo.jpg`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download HD Photo</span>
+              </a>
             </div>
           </div>
         </div>
