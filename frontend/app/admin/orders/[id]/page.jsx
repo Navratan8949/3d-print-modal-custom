@@ -31,6 +31,10 @@ import {
   CreditCard,
   Send,
   Zap,
+  ZoomIn,
+  Download,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
 import {
@@ -134,6 +138,58 @@ export default function AdminOrderDetailPage({ params }) {
   const [copied, setCopied] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState(null);
+
+  const handleAdminAttachPhoto = async (itemIndex, files) => {
+    if (!files || files.length === 0) return;
+    try {
+      setUploadingPhotoIndex(itemIndex);
+      const fd = new FormData();
+      const fileList = Array.from(files);
+      fileList.forEach((f) => fd.append("photos", f));
+      fd.append("itemIndex", itemIndex);
+      fd.append("action", "append");
+
+      const res = await ordersAPI.updatePhotos(order._id || order.orderNumber, fd);
+      if (res?.success && res.order) {
+        setOrder(res.order);
+        setSuccessMsg(`Attached ${fileList.length} photo(s) to order successfully!`);
+        setTimeout(() => setSuccessMsg(""), 4000);
+      } else {
+        throw new Error(res?.message || "Failed to upload photo(s)");
+      }
+    } catch (err) {
+      console.error("Error attaching customer photo:", err);
+      setError(err?.message || "Failed to upload customer photo");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setUploadingPhotoIndex(null);
+    }
+  };
+
+  const handleAdminRemovePhoto = async (itemIndex, photoUrl) => {
+    if (!confirm("Are you sure you want to remove this reference photo from order?")) return;
+    try {
+      setUploadingPhotoIndex(itemIndex);
+      const res = await ordersAPI.updatePhotos(order._id || order.orderNumber, {
+        itemIndex,
+        action: "remove",
+        removedUrl: photoUrl,
+      });
+      if (res?.success && res.order) {
+        setOrder(res.order);
+        setSuccessMsg("Reference photo removed successfully.");
+        setTimeout(() => setSuccessMsg(""), 3000);
+      } else {
+        throw new Error(res?.message || "Failed to remove photo");
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to remove photo");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setUploadingPhotoIndex(null);
+    }
+  };
 
   // Form editable states
   const [status, setStatus] = useState("pending");
@@ -1106,29 +1162,51 @@ export default function AdminOrderDetailPage({ params }) {
       {/* Lightbox Modal for Uploaded Reference Photo */}
       {previewPhoto && (
         <div
-          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setPreviewPhoto(null)}
         >
           <div
-            className="bg-white rounded-3xl p-4 max-w-lg w-full space-y-3 shadow-2xl"
+            className="bg-white rounded-3xl p-5 max-w-lg w-full space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <h4 className="font-serif font-bold text-sm text-stone-900">Customer Reference Photo</h4>
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-600" />
+                <h4 className="font-serif font-bold text-sm text-stone-900">
+                  Customer Reference Photo
+                </h4>
+              </div>
               <button
                 type="button"
                 onClick={() => setPreviewPhoto(null)}
-                className="text-stone-400 hover:text-stone-900 text-xs px-2 py-1 rounded-lg"
+                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-xs transition-colors cursor-pointer"
               >
-                ✕ Close
+                ✕
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto flex items-center justify-center">
+
+            <div className="max-h-[65vh] overflow-auto flex items-center justify-center p-2 bg-stone-50 rounded-2xl border border-stone-100">
               <img
-                src={previewPhoto}
+                src={resolveProductImage(previewPhoto)}
                 alt="Customer reference"
-                className="max-h-[65vh] w-auto rounded-xl object-contain shadow-sm"
+                className="max-h-[60vh] w-auto rounded-xl object-contain shadow-sm"
               />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-stone-500 font-mono">
+                Order #{order.orderNumber}
+              </span>
+              <a
+                href={resolveProductImage(previewPhoto)}
+                download={`order-${order.orderNumber}-customer-photo.jpg`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download HD Photo</span>
+              </a>
             </div>
           </div>
         </div>

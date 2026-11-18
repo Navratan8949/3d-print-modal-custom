@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const { sendOrderEmails, sendOrderStatusEmail, sendInBackground } = require("../utils/sendMail");
@@ -326,7 +327,7 @@ exports.getAllOrders = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, paymentStatus, courierName, trackingNumber, trackingUrl, adminNotes } = req.body;
+    const { status, paymentStatus, courierName, trackingNumber, trackingUrl, adminNotes, items } = req.body;
 
     const order = await Order.findById(id);
 
@@ -342,6 +343,9 @@ exports.updateOrderStatus = async (req, res) => {
     if (status) order.status = status;
     if (paymentStatus) order.paymentStatus = paymentStatus;
     if (adminNotes !== undefined) order.adminNotes = adminNotes;
+    if (items && Array.isArray(items)) {
+      order.items = items;
+    }
 
     const trackingObj = req.body.tracking || {};
     const effectiveCourier = courierName !== undefined ? courierName : trackingObj.courierName;

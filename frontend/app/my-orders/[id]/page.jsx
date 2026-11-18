@@ -20,6 +20,11 @@ import {
   Mail,
   ShoppingBag,
   Camera,
+  ZoomIn,
+  Download,
+  Upload,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI, paymentAPI } from "@/lib/api";
@@ -256,7 +261,7 @@ export default function CustomerOrderDetailPage({ params }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 text-xs font-semibold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4 text-stone-500" />
             <span>Print Receipt</span>
@@ -268,11 +273,38 @@ export default function CustomerOrderDetailPage({ params }) {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors"
           >
-            <MessageCircle className="w-4 h-4 fill-current" />
+            <MessageCircle className="w-3.5 h-3.5 fill-current" />
             <span>WhatsApp Support</span>
           </a>
         </div>
       </div>
+
+      {/* Photo Update Feedback Toast / Banner */}
+      {photoFeedback && (
+        <div
+          className={`p-4 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in ${
+            photoFeedback.type === "success"
+              ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+              : "bg-red-50 text-red-900 border border-red-200"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {photoFeedback.type === "success" ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            )}
+            <span className="font-medium">{photoFeedback.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPhotoFeedback(null)}
+            className="text-stone-400 hover:text-stone-700 text-xs font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Visual Stepper Timeline */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-5">

@@ -31,6 +31,9 @@ import {
   Send,
   Zap,
   Info,
+  ZoomIn,
+  Download,
+  X,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
 import {
@@ -150,6 +153,7 @@ function AdminOrdersContent() {
 
   // Status updating indicator
   const [updatingId, setUpdatingId] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -1065,10 +1069,61 @@ function AdminOrdersContent() {
               <button
                 type="button"
                 onClick={() => setWhatsAppMenuOrder(null)}
-                className="w-full py-2 text-xs font-semibold rounded-xl bg-stone-100 text-stone-700 hover:bg-stone-200"
+                className="w-full py-2 text-xs font-semibold rounded-xl bg-stone-100 text-stone-700 hover:bg-stone-200 cursor-pointer"
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal for Uploaded Reference Photo */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-5 max-w-lg w-full space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-600" />
+                <h4 className="font-serif font-bold text-sm text-stone-900">
+                  Customer Reference Photo
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-xs transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-[65vh] overflow-auto flex items-center justify-center p-2 bg-stone-50 rounded-2xl border border-stone-100">
+              <img
+                src={previewPhoto}
+                alt="Customer reference"
+                className="max-h-[60vh] w-auto rounded-xl object-contain shadow-sm"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-stone-500 font-medium">Customer Upload</span>
+              <a
+                href={previewPhoto}
+                download="customer-reference-photo.jpg"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download HD Photo</span>
+              </a>
             </div>
           </div>
         </div>

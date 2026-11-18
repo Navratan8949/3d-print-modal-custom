@@ -50,6 +50,7 @@ export default function AdminProductDetailPage({ params }) {
     showInSlider: false,
     isCustomizable: true,
     currentStock: 100,
+    tags: "",
     status: "active",
   });
 
@@ -95,6 +96,7 @@ export default function AdminProductDetailPage({ params }) {
           showInSlider: Boolean(p.showInSlider),
           isCustomizable: p.isCustomizable !== false,
           currentStock: p.currentStock || 100,
+          tags: Array.isArray(p.tags) ? p.tags.join(", ") : (p.tags || ""),
           status: p.status || "active",
         });
       } else {
@@ -146,6 +148,12 @@ export default function AdminProductDetailPage({ params }) {
       formData.append("isCustomizable", form.isCustomizable);
       formData.append("currentStock", form.currentStock || 100);
       formData.append("status", form.status);
+      if (form.tags) {
+        const tagArr = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
+        formData.append("tags", JSON.stringify(tagArr));
+      } else {
+        formData.append("tags", JSON.stringify([]));
+      }
       formData.append("existingImages", JSON.stringify(product.images || []));
 
       if (newImageFiles.length > 0) {
@@ -436,6 +444,40 @@ export default function AdminProductDetailPage({ params }) {
                 placeholder="Detailed craft description, print resolution, and finish guidelines"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
               />
+            </div>
+
+            {/* Product Keywords & SEO Search Tags */}
+            <div className="space-y-2 pt-2 border-t border-stone-100">
+              <label className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Product Keywords &amp; SEO Search Tags</span>
+                </span>
+                <span className="text-[10px] text-stone-400 font-normal lowercase">comma separated</span>
+              </label>
+              <input
+                type="text"
+                value={form.tags || ""}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                placeholder="e.g. 3d miniature, custom photo gift, couple statue, resin figurine"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600 font-medium"
+              />
+              {form.tags && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {form.tags
+                    .split(",")
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                    .map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -143,6 +143,15 @@ exports.createRazorpayOrder = async (req, res) => {
               img = "/images/products/fullbody-figurine-hero.jpeg";
             }
 
+            const refPhotos =
+              Array.isArray(i.referencePhotos) && i.referencePhotos.length > 0
+                ? i.referencePhotos.filter(Boolean)
+                : i.referencePhotoUrl
+                ? [i.referencePhotoUrl]
+                : i.customization?.referencePhotoUrl
+                ? [i.customization.referencePhotoUrl]
+                : [];
+            const refUrl = refPhotos[0] || i.referencePhotoUrl || i.customization?.referencePhotoUrl || null;
             return {
               product: i.product || i._id || null,
               productId: String(prodId),
@@ -152,8 +161,9 @@ exports.createRazorpayOrder = async (req, res) => {
               quantity: Number(i.quantity) || 1,
               image: img,
               customization: i.customization || {},
-              hasPhoto: Boolean(i.hasPhoto || i.referencePhotoUrl),
-              referencePhotoUrl: i.referencePhotoUrl || null,
+              hasPhoto: Boolean(i.hasPhoto || refPhotos.length > 0 || refUrl),
+              referencePhotoUrl: refUrl,
+              referencePhotos: refPhotos,
             };
           })
         ),

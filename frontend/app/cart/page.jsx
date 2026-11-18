@@ -21,10 +21,12 @@ import {
   CreditCard,
   Lock,
   Sparkles,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { ordersAPI, paymentAPI } from "@/lib/api";
+import { ordersAPI, paymentAPI, policiesAPI } from "@/lib/api";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { getOrderItemImage } from "@/lib/orderImages";
 import CartItem from "@/components/cart/CartItem";
@@ -58,6 +60,34 @@ export default function CartPage() {
 
   // Payment Method: "razorpay" (online payment) or "whatsapp" (manual inquiry)
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+
+  // Store Policies & Legal Modals State
+  const [policies, setPolicies] = useState({
+    printOnOrderTitle: "INCLUDES PRINT-ON-ORDER ITEMS",
+    printOnOrderNotice:
+      "Production begins after payment. Each item's staff-provided estimate is shown in your cart.",
+    termsAndConditions: "",
+    privacyPolicy: "",
+    refundPolicy: "",
+  });
+  const [activePolicyModal, setActivePolicyModal] = useState(null); // "terms" | "privacy" | "refund" | null
+
+  useEffect(() => {
+    let isMounted = true;
+    policiesAPI
+      .get()
+      .then((res) => {
+        if (isMounted && res?.success && res.policies) {
+          setPolicies((prev) => ({ ...prev, ...res.policies }));
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch store policies:", err?.message || err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Status & Validation States
   const [touched, setTouched] = useState({});
@@ -209,16 +239,34 @@ export default function CartPage() {
           pincode: formData.pincode.trim(),
           notes: formData.notes.trim(),
         },
-        items: cart.map((item) => ({
-          productId: String(item.id || item.sku || ""),
-          name: item.name,
-          slug: item.slug || "",
-          price: Number(item.price) || 0,
-          quantity: Number(item.quantity) || 1,
-          image: getOrderItemImage(item),
-          customization: item.customization || {},
-          hasPhoto: Boolean(item.hasPhoto),
-        })),
+        items: cart.map((item) => {
+          const refPhotos = [
+            ...(Array.isArray(item.referencePhotos) ? item.referencePhotos : []),
+            ...(Array.isArray(item.customization?.referencePhotos)
+              ? item.customization.referencePhotos
+              : []),
+            ...(item.referencePhotoUrl ? [item.referencePhotoUrl] : []),
+            ...(item.customization?.referencePhotoUrl ? [item.customization.referencePhotoUrl] : []),
+          ]
+            .map((p) => (typeof p === "string" ? p : p?.url || p?.preview))
+            .filter(Boolean);
+
+          const uniquePhotos = Array.from(new Set(refPhotos));
+          const primaryPhoto = uniquePhotos[0] || "";
+
+          return {
+            productId: String(item.id || item.sku || ""),
+            name: item.name,
+            slug: item.slug || "",
+            price: Number(item.price) || 0,
+            quantity: Number(item.quantity) || 1,
+            image: getOrderItemImage(item),
+            customization: item.customization || {},
+            hasPhoto: Boolean(item.hasPhoto || uniquePhotos.length > 0),
+            referencePhotoUrl: primaryPhoto,
+            referencePhotos: uniquePhotos,
+          };
+        }),
         totalAmount: subtotal,
       };
 
@@ -354,16 +402,34 @@ export default function CartPage() {
           pincode: formData.pincode.trim(),
           notes: formData.notes.trim(),
         },
-        items: cart.map((item) => ({
-          productId: String(item.id || item.sku || ""),
-          name: item.name,
-          slug: item.slug || "",
-          price: Number(item.price) || 0,
-          quantity: Number(item.quantity) || 1,
-          image: getOrderItemImage(item),
-          customization: item.customization || {},
-          hasPhoto: Boolean(item.hasPhoto),
-        })),
+        items: cart.map((item) => {
+          const refPhotos = [
+            ...(Array.isArray(item.referencePhotos) ? item.referencePhotos : []),
+            ...(Array.isArray(item.customization?.referencePhotos)
+              ? item.customization.referencePhotos
+              : []),
+            ...(item.referencePhotoUrl ? [item.referencePhotoUrl] : []),
+            ...(item.customization?.referencePhotoUrl ? [item.customization.referencePhotoUrl] : []),
+          ]
+            .map((p) => (typeof p === "string" ? p : p?.url || p?.preview))
+            .filter(Boolean);
+
+          const uniquePhotos = Array.from(new Set(refPhotos));
+          const primaryPhoto = uniquePhotos[0] || "";
+
+          return {
+            productId: String(item.id || item.sku || ""),
+            name: item.name,
+            slug: item.slug || "",
+            price: Number(item.price) || 0,
+            quantity: Number(item.quantity) || 1,
+            image: getOrderItemImage(item),
+            customization: item.customization || {},
+            hasPhoto: Boolean(item.hasPhoto || uniquePhotos.length > 0),
+            referencePhotoUrl: primaryPhoto,
+            referencePhotos: uniquePhotos,
+          };
+        }),
         orderSource: "whatsapp",
       };
 
@@ -592,55 +658,113 @@ export default function CartPage() {
           <div className="lg:col-span-5 space-y-6">
             {!isAuthenticated && !allowGuest ? (
               <div className="rounded-3xl bg-white border border-stone-200/90 p-6 sm:p-8 shadow-xs space-y-6">
-                <div className="text-center space-y-3">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-700 shadow-2xs">
-                    <User className="w-8 h-8 text-amber-600" />
-                  </div>
-                  <span className="inline-block px-3 py-1 text-[11px] font-bold tracking-widest uppercase bg-amber-100 text-amber-900 rounded-full">
-                    Account Recommended to Place Order
+                {/* SUMMARY Header like Image 1 */}
+                <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                    Order Summary
                   </span>
-                  <h3 className="text-2xl font-serif font-bold text-stone-900">
-                    Sign in to Complete Your Order
-                  </h3>
-                  <p className="text-xs text-stone-600 max-w-sm mx-auto leading-relaxed">
-                    Sign in or create an account so this custom 3D order is securely linked to your profile, accessible for live stage tracking in <strong>My Orders</strong>, and auto-dispatched.
+                  <span className="text-xs font-bold text-stone-900">{totalItemCount} Items</span>
+                </div>
+
+                {/* INCLUDES PRINT-ON-ORDER ITEMS Banner */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/90 text-amber-950 space-y-1 text-left">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{policies?.printOnOrderTitle || "INCLUDES PRINT-ON-ORDER ITEMS"}</span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 leading-relaxed font-sans">
+                    {policies?.printOnOrderNotice ||
+                      "Production begins after payment. Each item's staff-provided estimate is shown in your cart."}
                   </p>
                 </div>
 
-                <div className="space-y-3 pt-2">
+                {/* Price Breakdown */}
+                <div className="space-y-2 text-xs text-stone-600 py-2 border-y border-stone-100 text-left">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-stone-900">₹{subtotal}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>GST (0%)</span>
+                    <span className="font-semibold text-stone-900">₹0.00</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Delivery Fee</span>
+                    <span className="font-semibold text-emerald-600">Free Express</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-stone-900 pt-1 border-t border-stone-100">
+                    <span>TOTAL AMOUNT</span>
+                    <span className="text-amber-900 font-serif">₹{subtotal}</span>
+                  </div>
+                </div>
+
+                <div className="text-center space-y-2">
+                  <span className="inline-block px-3 py-1 text-[11px] font-bold tracking-widest uppercase bg-amber-100 text-amber-900 rounded-full">
+                    Account Recommended
+                  </span>
+                  <h3 className="text-xl font-serif font-bold text-stone-900">
+                    Sign in to Complete Order
+                  </h3>
+                  <p className="text-xs text-stone-600 max-w-sm mx-auto leading-relaxed">
+                    Track live 3D print progress &amp; dispatch updates in your account.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-1">
                   <Link
                     href="/login?redirect=/cart"
                     className="w-full py-3.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <span>Sign In to Continue</span>
+                    <span>Sign In to Checkout</span>
                     <ArrowRight className="w-4 h-4 text-amber-400" />
                   </Link>
 
                   <Link
                     href="/register?redirect=/cart"
-                    className="w-full py-3.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/80 text-amber-900 font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/80 text-amber-900 font-semibold text-xs transition-all flex items-center justify-center gap-2"
                   >
                     <span>Create Free Account</span>
                     <ArrowRight className="w-4 h-4 text-amber-700" />
                   </Link>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 text-stone-600 text-[11px] space-y-1">
-                  <div className="font-semibold text-stone-800 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Your bag is preserved</span>
-                  </div>
-                  <p>Your {cart.length} item(s) will remain in your cart when you sign in or register.</p>
-                </div>
-
-                <div className="pt-2 border-t border-stone-100 text-center">
+                <div className="pt-2 border-t border-stone-100 text-center space-y-3">
                   <button
                     type="button"
                     onClick={() => setAllowGuest(true)}
-                    className="text-xs text-stone-500 hover:text-stone-800 underline font-medium transition-colors"
+                    className="text-xs text-amber-800 hover:text-amber-900 underline font-semibold transition-colors cursor-pointer"
                   >
-                    Or continue as Guest (Instant Checkout)
+                    ⚡ Or continue as Guest (Instant Checkout)
                   </button>
+
+                  {/* Policy Agreement Disclaimer */}
+                  <p className="text-[11px] text-stone-500 leading-relaxed text-center">
+                    By continuing to Razorpay, you agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActivePolicyModal("terms")}
+                      className="font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 cursor-pointer"
+                    >
+                      Terms &amp; Conditions
+                    </button>
+                    , acknowledge the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActivePolicyModal("refund")}
+                      className="font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 cursor-pointer"
+                    >
+                      Cancellation &amp; Refund Policy
+                    </button>
+                    , and understand the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActivePolicyModal("privacy")}
+                      className="font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 cursor-pointer"
+                    >
+                      Privacy Policy
+                    </button>
+                    .
+                  </p>
                 </div>
               </div>
             ) : (
@@ -1007,6 +1131,18 @@ export default function CartPage() {
 
                   {/* Order Summary Strip */}
                   <div className="pt-4 border-t border-stone-100 space-y-3">
+                    {/* INCLUDES PRINT-ON-ORDER ITEMS Banner (from Image 1) */}
+                    <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/90 text-amber-950 space-y-1 text-left">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{policies?.printOnOrderTitle || "INCLUDES PRINT-ON-ORDER ITEMS"}</span>
+                      </div>
+                      <p className="text-xs text-amber-900/90 leading-relaxed font-sans">
+                        {policies?.printOnOrderNotice ||
+                          "Production begins after payment. Each item's staff-provided estimate is shown in your cart."}
+                      </p>
+                    </div>
+
                     <div className="flex items-center justify-between text-xs text-stone-600">
                       <span>Order Items Count</span>
                       <span className="font-bold text-stone-900">{totalItemCount} Units</span>
@@ -1075,6 +1211,35 @@ export default function CartPage() {
                       </button>
                     )}
 
+                    {/* Policy Agreement Disclaimer */}
+                    <p className="text-center text-[11px] text-stone-500 leading-relaxed pt-1">
+                      By continuing to Razorpay, you agree to the{" "}
+                      <button
+                        type="button"
+                        onClick={() => setActivePolicyModal("terms")}
+                        className="font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 cursor-pointer"
+                      >
+                        Terms &amp; Conditions
+                      </button>
+                      , acknowledge the{" "}
+                      <button
+                        type="button"
+                        onClick={() => setActivePolicyModal("refund")}
+                        className="font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 cursor-pointer"
+                      >
+                        Cancellation &amp; Refund Policy
+                      </button>
+                      , and understand the{" "}
+                      <button
+                        type="button"
+                        onClick={() => setActivePolicyModal("privacy")}
+                        className="font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 cursor-pointer"
+                      >
+                        Privacy Policy
+                      </button>
+                      .
+                    </p>
+
                     {errorMessage && (
                       <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2 animate-fade-in">
                         <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
@@ -1092,6 +1257,75 @@ export default function CartPage() {
                 </form>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Policy Lightbox Modal */}
+      {activePolicyModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setActivePolicyModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-amber-600" />
+                <h3 className="font-serif font-bold text-stone-900 text-base sm:text-lg">
+                  {activePolicyModal === "terms" && "Terms & Conditions"}
+                  {activePolicyModal === "refund" && "Cancellation & Refund Policy"}
+                  {activePolicyModal === "privacy" && "Privacy Policy"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivePolicyModal(null)}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Content Body */}
+            <div className="px-6 py-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-stone-700 leading-relaxed max-h-[60vh]">
+              {activePolicyModal === "terms" && (
+                <div className="whitespace-pre-line font-sans">
+                  {policies?.termsAndConditions ||
+                    "Terms & Conditions: Standard policies apply to all customized 3D printing orders. Full production begins after payment verification."}
+                </div>
+              )}
+              {activePolicyModal === "refund" && (
+                <div className="whitespace-pre-line font-sans">
+                  {policies?.refundPolicy ||
+                    "Cancellation & Refund Policy: Full refund if cancelled within 6 hours or prior to 3D sculpting. Free 100% replacement in case of transit damage."}
+                </div>
+              )}
+              {activePolicyModal === "privacy" && (
+                <div className="whitespace-pre-line font-sans">
+                  {policies?.privacyPolicy ||
+                    "Privacy Policy: All customer reference photos and identity files are used strictly for 3D modeling and never shared or sold."}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-stone-100 bg-stone-50 flex items-center justify-between">
+              <span className="text-[11px] text-stone-500">
+                Prime 3D World Official Store Policy
+              </span>
+              <button
+                type="button"
+                onClick={() => setActivePolicyModal(null)}
+                className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs transition-colors cursor-pointer"
+              >
+                I Understand &amp; Close
+              </button>
+            </div>
           </div>
         </div>
       )}

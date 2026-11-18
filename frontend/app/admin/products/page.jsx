@@ -1144,7 +1144,41 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* 5. Customization & Display Controls */}
+                  {/* 5. Product Keywords & SEO Search Tags */}
+                  <div className="space-y-2 bg-stone-50/70 p-4 rounded-2xl border border-stone-200/90">
+                    <label className="font-bold text-xs uppercase tracking-wider text-stone-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Product Keywords &amp; SEO Search Tags</span>
+                      </span>
+                      <span className="text-[10px] text-stone-400 font-normal lowercase">comma separated</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 3d miniature, custom photo gift, couple statue, resin figurine"
+                      value={form.tags || ""}
+                      onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600 text-xs font-medium"
+                    />
+                    {form.tags && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {form.tags
+                          .split(",")
+                          .map((t) => t.trim())
+                          .filter(Boolean)
+                          .map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 6. Customization & Display Controls */}
                   <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/70 space-y-2.5">
                     <span className="font-bold text-xs text-amber-950 block">
                       Storefront Visibility & Customization

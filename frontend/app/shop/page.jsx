@@ -24,6 +24,8 @@ function ShopContent() {
       .then((res) => {
         if (res && res.categories) {
           setCategoriesList(res.categories);
+        } else {
+          setCategoriesList(CATEGORIES);
         }
       })
       .catch((e) => console.warn("Categories fetch error:", e.message));

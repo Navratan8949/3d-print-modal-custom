@@ -44,7 +44,12 @@ async function fetchProduct(slug) {
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.product) return data;
+      if (data && data.product) {
+        return {
+          product: data.product,
+          related: data.relatedProducts || [],
+        };
+      }
     }
   } catch {
     // Server fetch error

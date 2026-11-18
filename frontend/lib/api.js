@@ -347,6 +347,48 @@ export const ordersAPI = {
   delete: async (id) => {
     return request(`/orders/${id}`, { method: "DELETE" });
   },
+
+  uploadPhoto: async (formData) => {
+    return request("/orders/upload-photo", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  uploadPhotos: async (formData) => {
+    return request("/orders/upload-photos", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  updatePhotos: async (id, data) => {
+    if (typeof FormData !== "undefined" && data instanceof FormData) {
+      return request(`/orders/${id}/photos`, {
+        method: "PATCH",
+        body: data,
+      });
+    }
+    return request(`/orders/${id}/photos`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// ==========================================
+// POLICIES API
+// ==========================================
+export const policiesAPI = {
+  get: async () => {
+    return request("/policies", { method: "GET" });
+  },
+  update: async (policyData) => {
+    return request("/policies", {
+      method: "PUT",
+      body: JSON.stringify(policyData),
+    });
+  },
 };
 
 // ==========================================
