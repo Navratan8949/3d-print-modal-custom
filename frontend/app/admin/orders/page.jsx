@@ -36,8 +36,12 @@ import {
   X,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
-import { getOrderItemImage } from "@/lib/orderImages";
-import { resolveProductImage } from "@/lib/imageUtils";
+import {
+  getOrderItemImage,
+  getOrderReferencePhotos,
+  filterCustomizationSpecs,
+} from "@/lib/orderImages";
+import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
 
 // ==========================================
 // POPULAR INDIAN COURIER PRESETS
@@ -586,108 +590,59 @@ function AdminOrdersContent() {
                     <div className="space-y-3">
                       {ord.items?.map((item, idx) => {
                         const itemImg = getOrderItemImage(item);
-                        const photoList = [
-                          ...(Array.isArray(item.referencePhotos) ? item.referencePhotos : []),
-                          ...(Array.isArray(item.customization?.referencePhotos)
-                            ? item.customization.referencePhotos
-                            : []),
-                          ...(item.referencePhotoUrl ? [item.referencePhotoUrl] : []),
-                          ...(item.customization?.referencePhotoUrl
-                            ? [item.customization.referencePhotoUrl]
-                            : []),
-                          ...(item.referencePhotos?.[0]?.url ? [item.referencePhotos[0].url] : []),
-                          ...(item.referencePhotos?.[0]?.preview
-                            ? [item.referencePhotos[0].preview]
-                            : []),
-                        ]
-                          .map((p) => (typeof p === "string" ? p : p?.url || p?.preview))
-                          .filter(Boolean);
-
-                        const uniquePhotos = Array.from(new Set(photoList));
-                        const primaryPhoto = uniquePhotos[0]
-                          ? resolveProductImage(uniquePhotos[0])
-                          : null;
-
-                        const nonPhotoSpecs = Object.entries(item.customization || {}).filter(
-                          ([k, v]) => {
-                            if (!v) return false;
-                            const lk = k.toLowerCase();
-                            return !lk.includes("photo") && !lk.includes("reference");
-                          }
-                        );
-
-                        const photoEntry = Object.entries(item.customization || {}).find(([k]) => {
-                          const lk = k.toLowerCase();
-                          return lk.includes("photo") || lk.includes("reference");
-                        });
-                        const attachedFilename = photoEntry ? String(photoEntry[1]) : null;
+                        const refPhotos = getOrderReferencePhotos(ord, item);
+                        const cleanSpecs = filterCustomizationSpecs(item.customization);
 
                         return (
                           <div
                             key={idx}
-                            className="flex items-start gap-3 text-xs bg-stone-50/60 p-2.5 rounded-2xl border border-stone-100"
+                            className="space-y-2.5 text-xs bg-stone-50/60 p-3 rounded-2xl border border-stone-100"
                           >
-                            <div className="relative shrink-0">
-                              <img
-                                src={itemImg}
-                                alt={item.name}
-                                className="w-14 h-14 object-cover rounded-xl border border-stone-200 bg-stone-100 shadow-2xs"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
-                                }}
-                              />
-                              {primaryPhoto && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPreviewPhoto(primaryPhoto)}
-                                  className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
-                                  title={`View Customer Photo (${uniquePhotos.length})`}
-                                >
-                                  <Camera className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="font-bold text-stone-900 text-sm truncate">{item.name}</div>
-                              <div className="text-[11px] text-stone-500 font-medium mt-0.5">
-                                Qty: <span className="font-bold text-stone-800">{item.quantity}</span> • ₹{item.price} each
+                            <div className="flex items-start gap-3">
+                              <div className="relative shrink-0">
+                                <img
+                                  src={itemImg}
+                                  alt={item.name}
+                                  className="w-14 h-14 object-cover rounded-xl border border-stone-200 bg-stone-100 shadow-2xs"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                                  }}
+                                />
                               </div>
 
-                              {nonPhotoSpecs.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                  {nonPhotoSpecs.map(([k, v]) => (
-                                    <span
-                                      key={k}
-                                      className="px-2 py-0.5 text-[10px] bg-white text-stone-700 font-medium rounded-md border border-stone-200/90 shadow-2xs"
-                                    >
-                                      <strong className="text-stone-500 font-semibold">{k}:</strong> {String(v)}
-                                    </span>
-                                  ))}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-stone-900 text-sm truncate">{item.name}</div>
+                                <div className="text-[11px] text-stone-500 font-medium mt-0.5">
+                                  Qty: <span className="font-bold text-stone-800">{item.quantity}</span> • ₹{item.price} each
                                 </div>
-                              )}
 
-                              {uniquePhotos.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPreviewPhoto(primaryPhoto)}
-                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-[10px] font-bold cursor-pointer transition-colors"
-                                  >
-                                    <Camera className="w-3 h-3 text-amber-600" />
-                                    <span>
-                                      View {uniquePhotos.length} Photo{uniquePhotos.length > 1 ? "s" : ""}
-                                    </span>
-                                    <ZoomIn className="w-2.5 h-2.5 text-amber-600" />
-                                  </button>
-                                </div>
-                              ) : (item.hasPhoto || attachedFilename) ? (
-                                <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-amber-700 font-semibold">
-                                  <Camera className="w-3 h-3" /> Photo: {attachedFilename || "Attached by customer"}
-                                </span>
-                              ) : null}
+                                {/* Clean Customization Specs (filtered from internal paths) */}
+                                {cleanSpecs.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {cleanSpecs.map(([k, v]) => (
+                                      <span
+                                        key={k}
+                                        className="px-2 py-0.5 text-[10px] bg-white text-stone-700 font-medium rounded-md border border-stone-200/90 shadow-2xs"
+                                      >
+                                        <strong className="text-stone-500 font-semibold">{k}:</strong> {String(v)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+
+                            {/* Customer Reference Photos Gallery (Up to 5) */}
+                            {refPhotos.length > 0 && (
+                              <div className="pt-2 border-t border-stone-200/60">
+                                <OrderReferenceGallery
+                                  photos={refPhotos}
+                                  title="Customer Reference Photos"
+                                  maxPhotos={5}
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}

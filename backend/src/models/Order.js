@@ -172,6 +172,10 @@ const orderSchema = new mongoose.Schema(
       enum: ["whatsapp", "web"],
       default: "whatsapp",
     },
+    referencePhotos: {
+      type: [String],
+      default: [],
+    },
     whatsappUrl: {
       type: String,
       default: "",

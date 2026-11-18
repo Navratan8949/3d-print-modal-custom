@@ -100,6 +100,24 @@
   animation: marquee 25s linear infinite;
 }
 
+/* Shimmer Animation for Gradients */
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 5s ease-in-out infinite;
+}
+
 .neo-button {
   display: inline-flex;
   align-items: center;

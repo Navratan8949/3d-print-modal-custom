@@ -17,7 +17,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI } from "@/lib/api";
-import { getOrderItemImage } from "@/lib/orderImages";
+import {
+  getOrderItemImage,
+  getOrderReferencePhotos,
+  filterCustomizationSpecs,
+} from "@/lib/orderImages";
 import SectionHeading from "@/components/common/SectionHeading";
 
 export default function MyOrdersPage() {
@@ -219,69 +223,60 @@ export default function MyOrdersPage() {
               {/* Order Items */}
               <div className="p-5 sm:p-6 space-y-4">
                 <div className="divide-y divide-stone-100">
-                  {order.items?.map((item, idx) => (
-                    <div key={idx} className="py-3.5 first:pt-0 last:pb-0 flex items-start gap-4">
-                      {(() => {
-                        const itemImg = getOrderItemImage(item);
-                        return (
-                          <div className="relative shrink-0">
-                            <img
-                              src={itemImg}
-                              alt={item.name}
-                              className="w-16 h-16 object-cover rounded-xl border border-stone-200/80 bg-stone-100 shadow-2xs"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
-                              }}
-                            />
-                            {item.referencePhotoUrl && (
-                              <a
-                                href={item.referencePhotoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-0.5 shadow-xs"
-                                title="Reference photo attached"
-                              >
-                                <Camera className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })()}
+                  {order.items?.map((item, idx) => {
+                    const itemImg = getOrderItemImage(item);
+                    const refPhotos = getOrderReferencePhotos(order, item);
+                    const cleanSpecs = filterCustomizationSpecs(item.customization);
 
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <h4 className="text-sm font-semibold text-stone-900 truncate">{item.name}</h4>
-                        <div className="text-[11px] text-stone-500">
-                          Qty: {item.quantity} • ₹{item.price} each
+                    return (
+                      <div key={idx} className="py-3.5 first:pt-0 last:pb-0 flex items-start gap-4">
+                        <div className="relative shrink-0">
+                          <img
+                            src={itemImg}
+                            alt={item.name}
+                            className="w-16 h-16 object-cover rounded-xl border border-stone-200/80 bg-stone-100 shadow-2xs"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                            }}
+                          />
                         </div>
 
-                        {item.customization && Object.keys(item.customization).length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {Object.entries(item.customization).map(([k, v]) =>
-                              v ? (
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h4 className="text-sm font-semibold text-stone-900 truncate">{item.name}</h4>
+                          <div className="text-[11px] text-stone-500">
+                            Qty: {item.quantity} • ₹{item.price} each
+                          </div>
+
+                          {cleanSpecs.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {cleanSpecs.map(([k, v]) => (
                                 <span
                                   key={k}
                                   className="px-2 py-0.5 rounded text-[10px] bg-stone-100 text-stone-700 border border-stone-200"
                                 >
-                                  <strong>{k}:</strong> {v}
+                                  <strong>{k}:</strong> {String(v)}
                                 </span>
-                              ) : null
-                            )}
-                          </div>
-                        )}
+                              ))}
+                            </div>
+                          )}
 
-                        {item.hasPhoto && (
-                          <p className="text-[10px] text-amber-700 font-semibold pt-0.5">
-                            📸 Reference photo shared
-                          </p>
-                        )}
-                      </div>
+                          {refPhotos.length > 0 && (
+                            <div className="flex items-center gap-1.5 pt-1.5">
+                              <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70 inline-flex items-center gap-1">
+                                <Camera className="w-3 h-3 text-amber-700" />
+                                <span>{refPhotos.length} Reference Photo(s) Attached</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                      <div className="text-right shrink-0 font-semibold text-sm text-stone-900">
-                        ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
+                        <div className="text-right shrink-0 font-semibold text-sm text-stone-900">
+                          ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Delivery Address & Tracking */}

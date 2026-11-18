@@ -1,52 +1,155 @@
 /**
- * Prime 3D Printing Lab - API Client
- * Connects frontend with Express/Node.js backend
+ * Prime 3D Printing Lab - Unified API Client & Axios Interceptor
+ * Handles authentication, in-memory tokens, HttpOnly refresh cookies,
+ * automatic 401 retry queue, and all domain API endpoints.
  */
+
+import axios from "axios";
+import { tokenManager } from "./tokenManager";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
-const getAuthToken = () => {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("prime3d_token");
+// ==========================================
+// AXIOS CORE INSTANCE & INTERCEPTORS
+// ==========================================
+export const axiosClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true, // Transmit HttpOnly cookies across origins
+});
+
+// State for concurrent request queuing while refreshing token
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
 };
 
-/**
- * Universal request wrapper with authorization & JSON handling
- */
-async function request(endpoint, options = {}) {
-  const token = getAuthToken();
-  const headers = {
-    ...options.headers,
-  };
+// Request Interceptor: Attach in-memory Access Token
+axiosClient.interceptors.request.use(
+  (config) => {
+    const token = tokenManager.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+// Response Interceptor: Seamless Auto-Refresh on 401
+axiosClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
 
-  // If not FormData, send as application/json
-  if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
-  }
+    // Do not attempt refresh on auth endpoints to prevent infinite loops
+    const isAuthEndpoint =
+      originalRequest?.url?.includes("/auth/login") ||
+      originalRequest?.url?.includes("/auth/register") ||
+      originalRequest?.url?.includes("/auth/refresh");
 
-  const url = `${API_BASE_URL}${endpoint}`;
+    if (
+      error.response?.status === 401 &&
+      !originalRequest?._retry &&
+      !isAuthEndpoint
+    ) {
+      if (isRefreshing) {
+        // Queue concurrent requests while a refresh is in-flight
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axiosClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+      originalRequest._retry = true;
+      isRefreshing = true;
 
-    const data = await response.json().catch(() => ({}));
+      try {
+        // Call backend refresh endpoint with HttpOnly cookie
+        const refreshResponse = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
 
-    if (!response.ok) {
-      throw new Error(data.message || `Request failed with status ${response.status}`);
+        const newAccessToken =
+          refreshResponse.data?.accessToken || refreshResponse.data?.token;
+
+        if (newAccessToken) {
+          tokenManager.setAccessToken(newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+          processQueue(null, newAccessToken);
+          return axiosClient(originalRequest);
+        } else {
+          throw new Error("No access token returned from refresh endpoint");
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        tokenManager.clearAccessToken();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
 
-    return data;
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Universal request wrapper powered by axiosClient
+ */
+async function request(endpoint, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = { ...options.headers };
+
+  let data = undefined;
+  if (options.body) {
+    if (options.body instanceof FormData) {
+      data = options.body;
+      delete headers["Content-Type"];
+    } else if (typeof options.body === "string") {
+      try {
+        data = JSON.parse(options.body);
+      } catch {
+        data = options.body;
+      }
+    } else {
+      data = options.body;
+    }
+  }
+
+  try {
+    const response = await axiosClient({
+      url: endpoint,
+      method,
+      headers,
+      data,
+    });
+    return response.data;
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error.message);
-    throw error;
+    const msg =
+      error.response?.data?.message ||
+      error.message ||
+      `Request failed with status ${error.response?.status || 500}`;
+    throw new Error(msg);
   }
 }
 
@@ -66,6 +169,14 @@ export const authAPI = {
       method: "POST",
       body: JSON.stringify({ name, email, phone, password }),
     });
+  },
+
+  refreshToken: async () => {
+    return request("/auth/refresh", { method: "POST" });
+  },
+
+  logout: async () => {
+    return request("/auth/logout", { method: "POST" });
   },
 
   getMe: async () => {
@@ -226,6 +337,13 @@ export const ordersAPI = {
     });
   },
 
+  updatePhotos: async (id, formData) => {
+    return request(`/orders/${id}/photos`, {
+      method: "PATCH",
+      body: formData,
+    });
+  },
+
   delete: async (id) => {
     return request(`/orders/${id}`, { method: "DELETE" });
   },
@@ -382,4 +500,3 @@ export default {
   inquiries: inquiriesAPI,
   dashboard: dashboardAPI,
 };
-

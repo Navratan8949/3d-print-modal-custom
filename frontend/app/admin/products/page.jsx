@@ -36,12 +36,11 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { productsAPI, categoriesAPI } from "@/lib/api";
-import { CATEGORIES as DEFAULT_CATEGORIES } from "@/data/categories";
 import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -183,11 +182,11 @@ export default function AdminProductsPage() {
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
-    const defaultCat = categories[0] || DEFAULT_CATEGORIES[0];
+    const defaultCat = categories[0] || { name: "", slug: "", id: "" };
     setForm({
       ...initialForm,
-      category: defaultCat.name,
-      categoryId: defaultCat.slug || defaultCat.id,
+      category: defaultCat.name || "",
+      categoryId: defaultCat.slug || defaultCat.id || "",
       existingImages: [],
     });
     setSelectedFiles([]);

@@ -6,6 +6,7 @@ const {
   getOrderById,
   getAllOrders,
   updateOrderStatus,
+  updateOrderPhotos,
   deleteOrder,
   uploadReferencePhoto,
   uploadReferencePhotos,
@@ -23,7 +24,8 @@ const optionalAuth = (req, res, next) => {
   if (authHeader && authHeader.startsWith("Bearer ")) {
     try {
       const token = authHeader.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+      const decoded = jwt.verify(token, secret);
       req.user = decoded;
     } catch {
       // ignore invalid token for optional auth
@@ -37,6 +39,7 @@ router.post("/upload-photo", orderUpload.single("photo"), uploadReferencePhoto);
 router.post("/upload-photos", orderUpload.array("photos", 10), uploadReferencePhotos);
 router.patch("/:id/photos", optionalAuth, orderUpload.array("photos", 10), updateOrderPhotos);
 router.post("/", optionalAuth, orderUpload.array("referencePhotos", 5), createOrder);
+router.patch("/:id/photos", optionalAuth, orderUpload.array("referencePhotos", 5), updateOrderPhotos);
 router.get("/my-orders", authMiddleware, getMyOrders);
 
 // Admin routes

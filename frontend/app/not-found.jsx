@@ -8,6 +8,9 @@ import {
   Search,
   Sparkles,
   Layers,
+  Users,
+  Flame,
+  Tag,
 } from "lucide-react";
 
 export const metadata = {
@@ -100,27 +103,31 @@ export default function NotFound() {
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Link
               href="/products/custom-3d-miniature"
-              className="px-3 py-1 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-semibold transition-colors"
             >
-              👫 Miniature Couples &amp; Figurines
+              <Users className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Miniature Couples &amp; Figurines</span>
             </Link>
             <Link
               href="/shop?category=3d-printed-idols"
-              className="px-3 py-1 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-semibold transition-colors"
             >
-              🛕 Sacred Temple Idols
+              <Flame className="w-3.5 h-3.5 text-amber-600" />
+              <span>Sacred Temple Idols</span>
             </Link>
             <Link
               href="/shop?category=personalized-name-models"
-              className="px-3 py-1 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-semibold transition-colors"
             >
-              🏷️ Personalized Names
+              <Tag className="w-3.5 h-3.5 text-blue-600" />
+              <span>Personalized Names</span>
             </Link>
             <Link
               href="/shop?category=home-decor"
-              className="px-3 py-1 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 text-xs font-semibold transition-colors"
             >
-              🏡 Stylish Home Décor
+              <Home className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Stylish Home Décor</span>
             </Link>
           </div>
         </div>

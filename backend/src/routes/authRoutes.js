@@ -2,6 +2,8 @@ const express = require("express");
 const {
   register,
   login,
+  refreshToken,
+  logout,
   getCurrentUser,
   forgotPassword,
   resetPassword,
@@ -15,6 +17,8 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
+router.post("/refresh", refreshToken);
+router.post("/logout", logout);
 router.get("/me", authMiddleware, getCurrentUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);

@@ -97,9 +97,8 @@ export default function Header() {
     <>
       <header
         ref={headerRef}
-        className={`sticky top-0 z-50 w-full bg-white border-b border-stone-200/90 transition-transform duration-300 ease-in-out ${
-          isVisible || isMobileMenuOpen ? "translate-y-0" : "-translate-y-full"
-        } ${isScrolled ? "shadow-sm" : ""}`}
+        className={`sticky top-0 z-50 w-full bg-white border-b border-stone-200/90 transition-transform duration-300 ease-in-out ${isVisible || isMobileMenuOpen ? "translate-y-0" : "-translate-y-full"
+          } ${isScrolled ? "shadow-sm" : ""}`}
       >
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3 sm:gap-6 lg:gap-8 h-16 sm:h-20">
@@ -124,11 +123,10 @@ export default function Header() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`whitespace-nowrap shrink-0 transition-colors relative py-1 ${
-                      isActive
+                    className={`whitespace-nowrap shrink-0 transition-colors relative py-1 ${isActive
                         ? "text-stone-950 font-semibold"
                         : "text-stone-600 hover:text-amber-700"
-                    }`}
+                      }`}
                   >
                     {link.label}
                     {isActive && (

@@ -49,11 +49,48 @@ export const metadata = {
   },
 };
 
-export default function HomePage() {
+async function getHeroProducts() {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+    // Attempt 1: Fetch products marked for hero slider
+    const resSlider = await fetch(`${apiUrl}/products?slider=true&limit=12`, {
+      next: { revalidate: 60 },
+    });
+    if (resSlider.ok) {
+      const data = await resSlider.json();
+      if (data?.products?.length > 0) return data.products;
+    }
+
+    // Attempt 2: Fetch featured products
+    const resFeatured = await fetch(`${apiUrl}/products?featured=true&limit=8`, {
+      next: { revalidate: 60 },
+    });
+    if (resFeatured.ok) {
+      const fData = await resFeatured.json();
+      if (fData?.products?.length > 0) return fData.products;
+    }
+
+    // Attempt 3: General products
+    const resAll = await fetch(`${apiUrl}/products?limit=8`, {
+      next: { revalidate: 60 },
+    });
+    if (resAll.ok) {
+      const allData = await resAll.json();
+      if (allData?.products?.length > 0) return allData.products;
+    }
+  } catch (err) {
+    // Graceful fallback during build or offline backend
+  }
+  return [];
+}
+
+export default async function HomePage() {
+  const heroProducts = await getHeroProducts();
+
   return (
     <div className="flex flex-col space-y-12 sm:space-y-16">
       {/* Hero Section with Interactive Card Stack Animation */}
-      <Hero />
+      <Hero initialProducts={heroProducts} />
 
       {/* Explore Catalog Categories */}
       <FeaturedCategories />

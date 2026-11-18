@@ -1,10 +1,26 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Phone, Mail, MessageCircle, MapPin } from "lucide-react";
 import Logo from "@/components/common/Logo";
 import { DISPLAY_PHONE_NUMBER, BRAND_EMAIL } from "@/lib/whatsapp";
-import { CATEGORIES } from "@/data/categories";
+import { categoriesAPI } from "@/lib/api";
 
 export default function Footer() {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    categoriesAPI
+      .getAll()
+      .then((res) => {
+        if (res && res.categories) {
+          setCategories(res.categories.slice(0, 6));
+        }
+      })
+      .catch(() => { });
+  }, []);
+
   return (
     <footer className="bg-stone-900 text-stone-300 pt-12 sm:pt-16 pb-10 sm:pb-12 border-t border-stone-800 w-full max-w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,10 +50,10 @@ export default function Footer() {
               Catalog Collections
             </h4>
             <ul className="space-y-2.5 text-xs text-stone-400">
-              {CATEGORIES.slice(0, 5).map((cat) => (
-                <li key={cat.id}>
+              {categories.map((cat) => (
+                <li key={cat.id || cat.slug}>
                   <Link
-                    href={`/shop?category=${cat.slug}`}
+                    href={`/shop?category=${cat.slug || cat.id}`}
                     className="hover:text-amber-400 transition-colors"
                   >
                     {cat.name}

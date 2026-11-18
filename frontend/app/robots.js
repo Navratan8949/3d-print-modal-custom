@@ -24,7 +24,15 @@ export default function robots() {
         allow: ["/", "/shop", "/products/", "/cart", "/contact"],
         disallow: ["/admin", "/admin/", "/api/"],
       },
+      {
+        userAgent: "Googlebot-Image",
+        allow: ["/", "/images/", "/uploads/", "/products/"],
+        disallow: ["/admin/", "/api/"],
+      },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: [
+      `${baseUrl}/sitemap.xml`,
+      `${baseUrl}/image-sitemap.xml`,
+    ],
   };
 }

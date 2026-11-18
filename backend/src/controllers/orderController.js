@@ -82,11 +82,13 @@ exports.createOrder = async (req, res) => {
     }
 
     // Attach uploaded reference photo if any
+    let allPhotoUrls = [];
     if (req.files && req.files.length > 0) {
-      const photoUrls = req.files.map((file) => `/uploads/orders/${file.filename}`);
+      allPhotoUrls = req.files.map((file) => `/uploads/orders/${file.filename}`);
       parsedItems = parsedItems.map((item, idx) => ({
         ...item,
-        referencePhotoUrl: photoUrls[idx] || photoUrls[0] || null,
+        referencePhotoUrl: allPhotoUrls[idx] || allPhotoUrls[0] || null,
+        referencePhotos: allPhotoUrls,
         hasPhoto: true,
       }));
     }
@@ -137,15 +139,10 @@ exports.createOrder = async (req, res) => {
             img = "/images/products/fullbody-figurine-hero.jpeg";
           }
 
-          const refPhotos =
-            Array.isArray(i.referencePhotos) && i.referencePhotos.length > 0
-              ? i.referencePhotos.filter(Boolean)
-              : i.referencePhotoUrl
-              ? [i.referencePhotoUrl]
-              : i.customization?.referencePhotoUrl
-              ? [i.customization.referencePhotoUrl]
-              : [];
-          const refUrl = refPhotos[0] || i.referencePhotoUrl || i.customization?.referencePhotoUrl || null;
+          const itemPhotos = Array.isArray(i.referencePhotos) && i.referencePhotos.length > 0
+            ? i.referencePhotos
+            : (i.referencePhotoUrl ? [i.referencePhotoUrl] : allPhotoUrls);
+
           return {
             product: i.product || i._id || null,
             productId: String(prodId),
@@ -155,12 +152,13 @@ exports.createOrder = async (req, res) => {
             quantity: Number(i.quantity) || 1,
             image: img,
             customization: i.customization || {},
-            hasPhoto: Boolean(i.hasPhoto || refPhotos.length > 0 || refUrl),
-            referencePhotoUrl: refUrl,
-            referencePhotos: refPhotos,
+            hasPhoto: Boolean(i.hasPhoto || i.referencePhotoUrl || itemPhotos.length > 0),
+            referencePhotoUrl: i.referencePhotoUrl || itemPhotos[0] || null,
+            referencePhotos: itemPhotos,
           };
         })
       ),
+      referencePhotos: allPhotoUrls,
       totalAmount: Number(calculatedTotal),
       itemCount: parsedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0),
       orderSource,
@@ -387,6 +385,113 @@ exports.updateOrderStatus = async (req, res) => {
 };
 
 // ==========================================
+// UPDATE ORDER REFERENCE PHOTOS (CUSTOMER / ADMIN)
+// Allowed up to 5 photos until order is in production
+// ==========================================
+exports.updateOrderPhotos = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Production check: Cannot update once in production, shipped, or delivered
+    const lockedStatuses = ["in_production", "shipped", "delivered"];
+    if (lockedStatuses.includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Photos cannot be modified while order is ${order.status.replace("_", " ")}. 3D fabrication has already started.`,
+      });
+    }
+
+    // Permission check: admin or order owner (registered or guest by phone/email)
+    const isAdmin = req.user && ["admin", "super_admin"].includes(req.user.role);
+    const isOwner = req.user && order.user && order.user.toString() === req.user.userId;
+    const customerPhone = (req.body.phone || req.headers["x-customer-phone"] || "").trim();
+    const customerEmail = (req.body.email || req.headers["x-customer-email"] || "").trim().toLowerCase();
+    const isGuestOwner =
+      Boolean(customerPhone && order.customer?.phone === customerPhone) ||
+      Boolean(customerEmail && order.customer?.email?.toLowerCase() === customerEmail);
+
+    if (!isAdmin && !isOwner && !isGuestOwner && order.user) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this order's photos",
+      });
+    }
+
+    // Parse existing photos to keep
+    let existingPhotos = [];
+    if (req.body.existingPhotos) {
+      if (Array.isArray(req.body.existingPhotos)) {
+        existingPhotos = req.body.existingPhotos;
+      } else if (typeof req.body.existingPhotos === "string") {
+        try {
+          existingPhotos = JSON.parse(req.body.existingPhotos);
+        } catch {
+          existingPhotos = req.body.existingPhotos
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+      }
+    }
+
+    // Parse new uploaded files
+    const newPhotos = req.files ? req.files.map((f) => `/uploads/orders/${f.filename}`) : [];
+
+    // Combine photos (Max 5)
+    const combinedPhotos = [...existingPhotos, ...newPhotos]
+      .filter((url) => typeof url === "string" && url.trim().length > 0)
+      .slice(0, 5);
+
+    if (combinedPhotos.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide at least one photo (maximum 5 photos)",
+      });
+    }
+
+    // Update order root reference photos
+    order.referencePhotos = combinedPhotos;
+
+    // Update items
+    if (order.items && order.items.length > 0) {
+      order.items[0].referencePhotos = combinedPhotos;
+      order.items[0].referencePhotoUrl = combinedPhotos[0] || null;
+      order.items[0].hasPhoto = true;
+
+      if (!order.items[0].customization) {
+        order.items[0].customization = {};
+      }
+      order.items[0].customization.referencePhotos = combinedPhotos.join(",");
+      order.items[0].customization.referencePhotoUrl = combinedPhotos[0] || null;
+      order.markModified("items");
+    }
+
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Reference photos updated successfully",
+      photos: combinedPhotos,
+      order,
+    });
+  } catch (error) {
+    console.error("Update order photos error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update reference photos",
+    });
+  }
+};
+
+// ==========================================
 // DELETE ORDER (ADMIN)
 // ==========================================
 exports.deleteOrder = async (req, res) => {
@@ -414,165 +519,4 @@ exports.deleteOrder = async (req, res) => {
   }
 };
 
-// POST /api/orders/upload-photo - Upload customer reference photo for 3D modeling
-exports.uploadReferencePhoto = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "No photo file provided",
-      });
-    }
-
-    const photoUrl = `/uploads/orders/${req.file.filename}`;
-    return res.status(200).json({
-      success: true,
-      photoUrl,
-      fileName: req.file.originalname,
-      size: req.file.size,
-    });
-  } catch (error) {
-    console.error("Error uploading reference photo:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Photo upload failed",
-      error: error.message,
-    });
-  }
-};
-
-// POST /api/orders/upload-photos - Upload multiple customer reference photos
-exports.uploadReferencePhotos = async (req, res) => {
-  try {
-    const files = req.files || (req.file ? [req.file] : []);
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No photo files provided",
-      });
-    }
-
-    const uploaded = files.map((file) => ({
-      photoUrl: `/uploads/orders/${file.filename}`,
-      fileName: file.originalname,
-      size: file.size,
-    }));
-
-    return res.status(200).json({
-      success: true,
-      photoUrls: uploaded.map((u) => u.photoUrl),
-      photos: uploaded,
-    });
-  } catch (error) {
-    console.error("Error uploading reference photos:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Multiple photos upload failed",
-      error: error.message,
-    });
-  }
-};
-
-// PATCH /api/orders/:id/photos - Update/add/delete photos on an order item (Customer or Admin)
-exports.updateOrderPhotos = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { itemIndex = 0, action = "update", removedUrl } = req.body;
-
-    // Look up by _id or orderNumber
-    let order = null;
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      order = await Order.findById(id);
-    }
-    if (!order) {
-      order = await Order.findOne({ orderNumber: id });
-    }
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // Role check: Admin can update anytime.
-    // Customer can only update if 3D printing/fabrication has NOT started.
-    const isAdmin = req.user && ["admin", "super_admin"].includes(req.user.role);
-    const lockedStatuses = ["in_production", "shipped", "delivered", "cancelled"];
-
-    if (!isAdmin && lockedStatuses.includes(order.status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Reference photos are locked because 3D print fabrication is already in progress.",
-        status: order.status,
-      });
-    }
-
-    const idx = Number(itemIndex) || 0;
-    if (!order.items || !order.items[idx]) {
-      return res.status(400).json({
-        success: false,
-        message: `Order item index ${idx} does not exist`,
-      });
-    }
-
-    const currentItem = order.items[idx];
-    let existingPhotos = Array.isArray(currentItem.referencePhotos)
-      ? [...currentItem.referencePhotos]
-      : currentItem.referencePhotoUrl
-      ? [currentItem.referencePhotoUrl]
-      : [];
-
-    // If new files were uploaded with this multipart request:
-    const newFiles = req.files || (req.file ? [req.file] : []);
-    const newPhotoUrls = newFiles.map((file) => `/uploads/orders/${file.filename}`);
-
-    // If client sent an array or string of photos in body:
-    let bodyPhotos = [];
-    if (req.body.photos) {
-      if (typeof req.body.photos === "string") {
-        try {
-          bodyPhotos = JSON.parse(req.body.photos);
-        } catch {
-          bodyPhotos = [req.body.photos];
-        }
-      } else if (Array.isArray(req.body.photos)) {
-        bodyPhotos = req.body.photos;
-      }
-    }
-
-    if (action === "remove" && removedUrl) {
-      existingPhotos = existingPhotos.filter((p) => p !== removedUrl);
-    } else if (action === "replace" && (bodyPhotos.length > 0 || newPhotoUrls.length > 0)) {
-      existingPhotos = [...bodyPhotos, ...newPhotoUrls];
-    } else {
-      // Default: append / merge
-      existingPhotos = Array.from(
-        new Set([...existingPhotos, ...bodyPhotos, ...newPhotoUrls])
-      ).filter(Boolean);
-    }
-
-    // Update item
-    currentItem.referencePhotos = existingPhotos;
-    currentItem.referencePhotoUrl = existingPhotos[0] || null;
-    currentItem.hasPhoto = existingPhotos.length > 0;
-
-    order.markModified("items");
-    await order.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Order reference photos updated successfully",
-      order,
-      item: currentItem,
-    });
-  } catch (error) {
-    console.error("Error updating order photos:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update order photos",
-      error: error.message,
-    });
-  }
-};
 

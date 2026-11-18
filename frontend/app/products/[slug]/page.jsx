@@ -3,16 +3,9 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import ProductDetailView from "@/components/products/ProductDetailView";
 import ProductCard from "@/components/products/ProductCard";
-import { PRODUCTS } from "@/data/products";
 
 export async function generateStaticParams() {
   const paramsMap = new Map();
-
-  // Populate from master catalog first
-  PRODUCTS.forEach((product) => {
-    if (product.slug) paramsMap.set(product.slug, { slug: product.slug });
-    if (product.id) paramsMap.set(String(product.id), { slug: String(product.id) });
-  });
 
   try {
     const apiUrl =
@@ -32,7 +25,7 @@ export async function generateStaticParams() {
       }
     }
   } catch {
-    // fallback
+    // API not reachable during build - dynamicParams handles runtime requests
   }
 
   return Array.from(paramsMap.values());
@@ -58,8 +51,8 @@ async function fetchProduct(slug) {
         };
       }
     }
-  } catch (err) {
-    console.warn("API fetch failed for product:", err.message);
+  } catch {
+    // Server fetch error
   }
 
   return null;
@@ -174,12 +167,37 @@ export default async function ProductDetailPage({ params }) {
     ? rawImage
     : `${siteUrl}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
 
-  // Rich Snippets: Product Schema
+  // Multi-angle Image URLs for Rich Image Search Indexing
+  const allImages = Array.from(
+    new Set(
+      [
+        product.image_url,
+        ...(Array.isArray(product.images) ? product.images : []),
+      ].filter(Boolean)
+    )
+  );
+  const schemaImages = allImages.map((img) => {
+    let raw = img;
+    if (typeof raw === "string" && raw.startsWith("/uploads/")) {
+      const backendUrl = (
+        process.env.NEXT_PUBLIC_BACKEND_URL || siteUrl
+      ).replace(/\/$/, "");
+      raw = `${backendUrl}${raw}`;
+    }
+    return raw.startsWith("http")
+      ? raw
+      : `${siteUrl}${raw.startsWith("/") ? "" : "/"}${raw}`;
+  });
+  if (schemaImages.length === 0) {
+    schemaImages.push(absoluteImageUrl);
+  }
+
+  // Rich Snippets: Product Schema (Google Merchant & Search Console Compliant)
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    image: [absoluteImageUrl],
+    image: schemaImages,
     description:
       product.description ||
       product.shortDescription ||
@@ -190,6 +208,7 @@ export default async function ProductDetailPage({ params }) {
       "@type": "Brand",
       name: "Prime 3D World",
     },
+    category: product.category || "3D Miniatures & Custom Gifts",
     material: product.material || "High-Density UV Resin & Premium PLA+",
     offers: {
       "@type": "Offer",
@@ -214,6 +233,29 @@ export default async function ProductDetailPage({ params }) {
           "@type": "DefinedRegion",
           addressCountry: "IN",
         },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 1,
+            maxValue: 2,
+            unitCode: "d",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 2,
+            maxValue: 5,
+            unitCode: "d",
+          },
+        },
+      },
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "IN",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 7,
+        returnMethod: "https://schema.org/ReturnByMail",
+        returnFees: "https://schema.org/FreeReturn",
       },
     },
     aggregateRating: {

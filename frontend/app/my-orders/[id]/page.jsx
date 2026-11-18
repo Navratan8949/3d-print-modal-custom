@@ -29,8 +29,14 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI, paymentAPI } from "@/lib/api";
 import { loadRazorpayScript } from "@/lib/razorpay";
-import { getOrderItemImage } from "@/lib/orderImages";
-import { resolveProductImage } from "@/lib/imageUtils";
+import {
+  getOrderItemImage,
+  getOrderReferencePhotos,
+  filterCustomizationSpecs,
+  isPhotoEditingAllowed,
+} from "@/lib/orderImages";
+import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
+import CustomerPhotoUpdateModal from "@/components/orders/CustomerPhotoUpdateModal";
 
 export default function CustomerOrderDetailPage({ params }) {
   const unwrappedParams = use(params);
@@ -42,74 +48,7 @@ export default function CustomerOrderDetailPage({ params }) {
   const [error, setError] = useState("");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
-  const [previewPhoto, setPreviewPhoto] = useState(null);
-  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState(null);
-  const [photoFeedback, setPhotoFeedback] = useState(null); // { type: 'success' | 'error', text: '' }
-
-  const handleCustomerUploadPhotos = async (itemIndex, files) => {
-    if (!files || files.length === 0) return;
-    try {
-      setUploadingPhotoIndex(itemIndex);
-      setPhotoFeedback(null);
-      const fd = new FormData();
-      const fileList = Array.from(files);
-      fileList.forEach((f) => fd.append("photos", f));
-      fd.append("itemIndex", itemIndex);
-      fd.append("action", "append");
-
-      const res = await ordersAPI.updatePhotos(order._id || order.orderNumber, fd);
-      if (res?.success && res.order) {
-        setOrder(res.order);
-        setPhotoFeedback({
-          type: "success",
-          text: `Added ${fileList.length} new reference photo(s) successfully! Our 3D artists will review them.`,
-        });
-        setTimeout(() => setPhotoFeedback(null), 5000);
-      } else {
-        throw new Error(res?.message || "Failed to upload photo(s)");
-      }
-    } catch (err) {
-      console.error("Error uploading photos:", err);
-      setPhotoFeedback({
-        type: "error",
-        text: err?.message || "Failed to upload photos. Please try again.",
-      });
-      setTimeout(() => setPhotoFeedback(null), 6000);
-    } finally {
-      setUploadingPhotoIndex(null);
-    }
-  };
-
-  const handleCustomerRemovePhoto = async (itemIndex, photoUrl) => {
-    if (!confirm("Are you sure you want to remove this reference photo?")) return;
-    try {
-      setUploadingPhotoIndex(itemIndex);
-      setPhotoFeedback(null);
-      const res = await ordersAPI.updatePhotos(order._id || order.orderNumber, {
-        itemIndex,
-        action: "remove",
-        removedUrl: photoUrl,
-      });
-      if (res?.success && res.order) {
-        setOrder(res.order);
-        setPhotoFeedback({
-          type: "success",
-          text: "Reference photo removed.",
-        });
-        setTimeout(() => setPhotoFeedback(null), 4000);
-      } else {
-        throw new Error(res?.message || "Failed to remove photo");
-      }
-    } catch (err) {
-      setPhotoFeedback({
-        type: "error",
-        text: err?.message || "Failed to remove photo",
-      });
-      setTimeout(() => setPhotoFeedback(null), 5000);
-    } finally {
-      setUploadingPhotoIndex(null);
-    }
-  };
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const handlePayNow = async () => {
     if (!order) return;
@@ -470,256 +409,87 @@ export default function CustomerOrderDetailPage({ params }) {
         </div>
 
         <div className="divide-y divide-stone-100">
-          {order.items?.map((item, idx) => (
-            <div key={idx} className="p-5 space-y-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  {(() => {
-                    const itemImg = getOrderItemImage(item);
-                    return (
-                      <div className="relative shrink-0">
-                        <img
-                          src={itemImg}
-                          alt={item.name}
-                          className="w-16 h-16 object-cover rounded-2xl border border-stone-200 bg-stone-100 shadow-2xs"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
-                          }}
-                        />
-                        {item.referencePhotoUrl && (
-                          <a
-                            href={item.referencePhotoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs"
-                            title="Reference photo attached"
-                          >
-                            <Camera className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })()}
+          {order.items?.map((item, idx) => {
+            const itemImg = getOrderItemImage(item);
+            const refPhotos = getOrderReferencePhotos(order, item);
+            const cleanSpecs = filterCustomizationSpecs(item.customization);
+            const canEditPhotos = isPhotoEditingAllowed(order);
 
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-sm text-stone-900">{item.name}</h3>
-                    <p className="text-xs text-stone-500">
-                      ₹{item.price} × {item.quantity} unit(s)
-                    </p>
-                    {item.slug && (
-                      <Link
-                        href={`/products/${item.slug}`}
-                        className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:underline"
-                      >
-                        <span>View Product Page</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    )}
+            return (
+              <div key={idx} className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="relative shrink-0">
+                      <img
+                        src={itemImg}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-2xl border border-stone-200 bg-stone-100 shadow-2xs"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-sm text-stone-900">{item.name}</h3>
+                      <p className="text-xs text-stone-500">
+                        ₹{item.price} × {item.quantity} unit(s)
+                      </p>
+                      {item.slug && (
+                        <Link
+                          href={`/products/${item.slug}`}
+                          className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:underline"
+                        >
+                          <span>View Product Page</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="font-serif font-bold text-sm text-stone-900">
+                      ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="font-serif font-bold text-sm text-stone-900">
-                    ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Customization Details & Reference Photos Gallery */}
-              {(() => {
-                const nonPhotoSpecs = Object.entries(item.customization || {}).filter(
-                  ([k, v]) => {
-                    if (!v) return false;
-                    const lk = k.toLowerCase();
-                    return !lk.includes("photo") && !lk.includes("reference");
-                  }
-                );
-
-                const isPrintingStarted = [
-                  "in_production",
-                  "shipped",
-                  "delivered",
-                  "cancelled",
-                ].includes(order.status);
-                const canUpdatePhotos = !isPrintingStarted;
-
-                const photoList = [
-                  ...(Array.isArray(item.referencePhotos) ? item.referencePhotos : []),
-                  ...(Array.isArray(item.customization?.referencePhotos)
-                    ? item.customization.referencePhotos
-                    : []),
-                  ...(item.referencePhotoUrl ? [item.referencePhotoUrl] : []),
-                  ...(item.customization?.referencePhotoUrl
-                    ? [item.customization.referencePhotoUrl]
-                    : []),
-                  ...(item.referencePhotos?.[0]?.url ? [item.referencePhotos[0].url] : []),
-                  ...(item.referencePhotos?.[0]?.preview ? [item.referencePhotos[0].preview] : []),
-                ]
-                  .map((p) => (typeof p === "string" ? p : p?.url || p?.preview))
-                  .filter(Boolean);
-
-                const uniquePhotos = Array.from(new Set(photoList));
-                const hasPhotos = uniquePhotos.length > 0 || item.hasPhoto;
-
-                return (
-                  <div className="space-y-3 pt-1">
-                    {/* 1. Customization Specs (filtered from raw photo strings) */}
-                    {nonPhotoSpecs.length > 0 && (
-                      <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-3 space-y-1 text-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
-                          Customization Specs:
+                {/* Customization Details (Clean specs only, no raw technical paths) */}
+                {cleanSpecs.length > 0 && (
+                  <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-3 space-y-1 text-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                      Customization Specs:
+                    </span>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {cleanSpecs.map(([k, v]) => (
+                        <span
+                          key={k}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-800 text-[11px]"
+                        >
+                          <strong>{k}:</strong> {String(v)}
                         </span>
-                        <div className="flex flex-wrap gap-2 pt-0.5">
-                          {nonPhotoSpecs.map(([k, v]) => (
-                            <span
-                              key={k}
-                              className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-800 text-[11px]"
-                            >
-                              <strong>{k}:</strong> {String(v)}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 2. Uploaded Reference Photos Section */}
-                    {hasPhotos && (
-                      <div className="rounded-2xl border border-amber-200/90 bg-amber-50/40 p-4 space-y-3.5">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <Camera className="w-4 h-4 text-amber-600 shrink-0" />
-                            <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
-                              Your Uploaded Reference Photos ({uniquePhotos.length})
-                            </h4>
-                          </div>
-
-                          {canUpdatePhotos ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                              <span>Editable: 3D Print not started</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700 border border-stone-300">
-                              <span>🔒 Locked: In 3D Production</span>
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Status Instructions */}
-                        {canUpdatePhotos ? (
-                          <p className="text-[11px] text-amber-900/90 leading-relaxed">
-                            💡 Our 3D artists will use these photos for face sculpting &amp; details.
-                            <strong>
-                              {" "}
-                              You can add more photos (front, side, close-up) or replace them until
-                              3D printing starts!
-                            </strong>
-                          </p>
-                        ) : (
-                          <p className="text-[11px] text-stone-600 leading-relaxed">
-                            🔒 3D digital sculpting and print fabrication has started for this order.
-                            Reference photos are now locked to ensure design accuracy.
-                          </p>
-                        )}
-
-                        {/* Photo Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
-                          {uniquePhotos.map((photoUrl, pIdx) => {
-                            const resolvedSrc = resolveProductImage(photoUrl);
-                            return (
-                              <div
-                                key={pIdx}
-                                className="relative group rounded-xl overflow-hidden border border-amber-200 bg-white shadow-2xs flex flex-col"
-                              >
-                                <span className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-stone-900/80 text-white font-mono font-bold text-[9px] shadow-sm">
-                                  #{pIdx + 1}
-                                </span>
-
-                                <div
-                                  onClick={() => setPreviewPhoto(resolvedSrc)}
-                                  className="relative aspect-square w-full bg-stone-100 overflow-hidden cursor-pointer"
-                                  title="Click to view full size photo"
-                                >
-                                  <img
-                                    src={resolvedSrc}
-                                    alt={`Reference photo ${pIdx + 1}`}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                  />
-                                  <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                    <ZoomIn className="w-5 h-5 drop-shadow-md" />
-                                  </div>
-                                </div>
-
-                                <div className="p-1.5 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-1 text-[11px]">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPreviewPhoto(resolvedSrc)}
-                                    className="inline-flex items-center gap-1 p-1 text-stone-600 hover:text-amber-700 hover:bg-amber-100/50 rounded transition-colors text-[10px] font-medium cursor-pointer"
-                                  >
-                                    <ZoomIn className="w-3 h-3 text-amber-600" />
-                                    <span>View</span>
-                                  </button>
-                                  <a
-                                    href={resolvedSrc}
-                                    download={`my-3d-order-${order.orderNumber}-photo-${
-                                      pIdx + 1
-                                    }.jpg`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-1 text-stone-600 hover:text-amber-700 hover:bg-amber-100/50 rounded transition-colors"
-                                    title="Download photo"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                  </a>
-                                  {canUpdatePhotos && (
-                                    <button
-                                      type="button"
-                                      disabled={uploadingPhotoIndex === idx}
-                                      onClick={() => handleCustomerRemovePhoto(idx, photoUrl)}
-                                      className="p-1 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                                      title="Remove photo"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Customer Add More Photos Card (when not locked) */}
-                          {canUpdatePhotos && (
-                            <label className="rounded-xl border-2 border-dashed border-amber-300 hover:border-amber-500 bg-white hover:bg-amber-50/60 p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors aspect-square min-h-[120px]">
-                              {uploadingPhotoIndex === idx ? (
-                                <Loader2 className="w-6 h-6 animate-spin text-amber-600 mb-1" />
-                              ) : (
-                                <Upload className="w-6 h-6 text-amber-600 mb-1" />
-                              )}
-                              <span className="text-[11px] font-bold text-amber-900 block">
-                                {uploadingPhotoIndex === idx ? "Uploading..." : "+ Add Photos"}
-                              </span>
-                              <span className="text-[9px] text-stone-500 block">
-                                Upload more angles
-                              </span>
-                              <input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                className="hidden"
-                                disabled={uploadingPhotoIndex === idx}
-                                onChange={(e) => handleCustomerUploadPhotos(idx, e.target.files)}
-                              />
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
-                );
-              })()}
-            </div>
-          ))}
+                )}
+
+                {/* Customer Reference Photos Gallery with Update Option */}
+                {(refPhotos.length > 0 || item.hasPhoto) && (
+                  <div className="pt-2">
+                    <OrderReferenceGallery
+                      photos={refPhotos}
+                      title="Your Reference Photos"
+                      allowUpdate={canEditPhotos}
+                      isProductionLocked={!canEditPhotos}
+                      onOpenUpdate={() => setIsPhotoModalOpen(true)}
+                      maxPhotos={5}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Pricing & Payment Summary Footer */}
@@ -809,58 +579,15 @@ export default function CustomerOrderDetailPage({ params }) {
         </div>
       </div>
 
-      {/* Lightbox Modal for Customer Viewing Reference Photo */}
-      {previewPhoto && (
-        <div
-          className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setPreviewPhoto(null)}
-        >
-          <div
-            className="bg-white rounded-3xl p-5 max-w-lg w-full space-y-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <div className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-amber-600" />
-                <h4 className="font-serif font-bold text-sm text-stone-900">
-                  Your Uploaded Reference Photo
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewPhoto(null)}
-                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-xs transition-colors cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="max-h-[65vh] overflow-auto flex items-center justify-center p-2 bg-stone-50 rounded-2xl border border-stone-100">
-              <img
-                src={previewPhoto}
-                alt="Your reference photo"
-                className="max-h-[60vh] w-auto rounded-xl object-contain shadow-sm"
-              />
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-stone-500 font-mono">
-                Order #{order.orderNumber}
-              </span>
-              <a
-                href={previewPhoto}
-                download={`order-${order.orderNumber}-photo.jpg`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download Photo</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Customer Reference Photo Upload / Update Modal */}
+      <CustomerPhotoUpdateModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        order={order}
+        onPhotosUpdated={(updatedOrder) => {
+          setOrder(updatedOrder);
+        }}
+      />
     </div>
   );
 }

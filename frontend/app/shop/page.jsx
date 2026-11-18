@@ -6,8 +6,6 @@ import { Search, X, SlidersHorizontal, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
 import ProductGrid from "@/components/products/ProductGrid";
 import PromoMiniatureBanner from "@/components/common/PromoMiniatureBanner";
-import { CATEGORIES } from "@/data/categories";
-import { PRODUCTS } from "@/data/products";
 import { productsAPI, categoriesAPI } from "@/lib/api";
 
 function ShopContent() {
@@ -24,16 +22,13 @@ function ShopContent() {
     categoriesAPI
       .getAll()
       .then((res) => {
-        if (res && res.categories && res.categories.length > 0) {
+        if (res && res.categories) {
           setCategoriesList(res.categories);
         } else {
           setCategoriesList(CATEGORIES);
         }
       })
-      .catch((e) => {
-        console.warn("Using default categories fallback:", e.message);
-        setCategoriesList(CATEGORIES);
-      });
+      .catch((e) => console.warn("Categories fetch error:", e.message));
   }, []);
 
   useEffect(() => {
@@ -47,13 +42,15 @@ function ShopContent() {
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
-        if (res && Array.isArray(res.products)) {
-          // Exclusively use products from the MongoDB database
+        if (res && res.products) {
           setProductsList(res.products);
+        } else {
+          setProductsList([]);
         }
       })
       .catch((err) => {
-        console.warn("Error fetching products from database:", err.message);
+        console.warn("Failed to load products from server:", err.message);
+        setProductsList([]);
       })
       .finally(() => {
         setLoading(false);
@@ -62,7 +59,7 @@ function ShopContent() {
 
   // Filtering and Sorting logic
   const filteredProducts = useMemo(() => {
-    let result = Array.isArray(productsList) ? [...productsList] : [...PRODUCTS];
+    let result = Array.isArray(productsList) ? [...productsList] : [];
 
     // Robust category filter matching slug, id, and normalized name
     if (selectedCategory && selectedCategory !== "all") {
@@ -220,11 +217,10 @@ function ShopContent() {
           <button
             type="button"
             onClick={() => setSelectedCategory("all")}
-            className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-              selectedCategory === "all"
+            className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${selectedCategory === "all"
                 ? "bg-stone-900 text-white shadow-md shadow-stone-900/20 ring-2 ring-stone-900"
                 : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
-            }`}
+              }`}
           >
             All Products ({productsList.length})
           </button>
@@ -235,11 +231,10 @@ function ShopContent() {
                 key={cat.id || cat.slug}
                 type="button"
                 onClick={() => setSelectedCategory(cat.slug || cat.id)}
-                className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                  isSelected
+                className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${isSelected
                     ? "bg-amber-600 text-white shadow-md shadow-amber-600/25 ring-2 ring-amber-600"
                     : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
-                }`}
+                  }`}
               >
                 {cat.name}
               </button>

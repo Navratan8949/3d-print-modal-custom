@@ -25,7 +25,6 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { categoriesAPI } from "@/lib/api";
-import { CATEGORIES as DEFAULT_CATEGORIES } from "@/data/categories";
 
 const COLOR_PRESETS = [
   "#D97706", // Amber
@@ -74,17 +73,16 @@ export default function AdminCategoriesPage() {
     setError("");
     try {
       const res = await categoriesAPI.getAllAdmin();
-      if (res && res.categories && res.categories.length > 0) {
+      if (res && res.categories) {
         setCategories(res.categories);
       } else {
         // Fallback to public categories
         const pub = await categoriesAPI.getAll();
-        setCategories(pub?.categories || DEFAULT_CATEGORIES);
+        setCategories(pub?.categories || []);
       }
     } catch (err) {
       console.warn("Failed to load admin categories:", err.message);
-      // Fallback
-      setCategories(DEFAULT_CATEGORIES);
+      setCategories([]);
     } finally {
       setLoading(false);
     }

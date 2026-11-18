@@ -59,7 +59,7 @@ export default function ProductCard({ product }) {
         <ProductVisual
           src={product.image_url || product.images?.[0]}
           imageKey={product.imageKey}
-          alt={product.name}
+          alt={`${product.name} - Custom 3D print in India`}
           aspectRatio="4/3"
         />
 

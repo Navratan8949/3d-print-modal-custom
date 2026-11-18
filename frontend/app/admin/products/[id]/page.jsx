@@ -22,7 +22,6 @@ import {
   Plus,
 } from "lucide-react";
 import { productsAPI, categoriesAPI } from "@/lib/api";
-import { CATEGORIES } from "@/data/categories";
 import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function AdminProductDetailPage({ params }) {
@@ -55,7 +54,7 @@ export default function AdminProductDetailPage({ params }) {
     status: "active",
   });
 
-  const [categories, setCategories] = useState(CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [newImageFiles, setNewImageFiles] = useState([]);
 
   useEffect(() => {
@@ -66,11 +65,11 @@ export default function AdminProductDetailPage({ params }) {
   const loadCategories = async () => {
     try {
       const res = await categoriesAPI.getAll();
-      if (res && res.categories && res.categories.length > 0) {
+      if (res && res.categories) {
         setCategories(res.categories);
       }
     } catch (err) {
-      console.warn("Using fallback categories:", err.message);
+      console.warn("Failed to load categories:", err.message);
     }
   };
 
