@@ -8,9 +8,6 @@ const {
   updateOrderStatus,
   updateOrderPhotos,
   deleteOrder,
-  uploadReferencePhoto,
-  uploadReferencePhotos,
-  updateOrderPhotos,
 } = require("../controllers/orderController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
@@ -35,9 +32,6 @@ const optionalAuth = (req, res, next) => {
 };
 
 // Customer routes
-router.post("/upload-photo", orderUpload.single("photo"), uploadReferencePhoto);
-router.post("/upload-photos", orderUpload.array("photos", 10), uploadReferencePhotos);
-router.patch("/:id/photos", optionalAuth, orderUpload.array("photos", 10), updateOrderPhotos);
 router.post("/", optionalAuth, orderUpload.array("referencePhotos", 5), createOrder);
 router.patch("/:id/photos", optionalAuth, orderUpload.array("referencePhotos", 5), updateOrderPhotos);
 router.get("/my-orders", authMiddleware, getMyOrders);
@@ -51,4 +45,3 @@ router.delete("/:id", authMiddleware, roleMiddleware("admin", "super_admin"), de
 router.get("/:id", optionalAuth, getOrderById);
 
 module.exports = router;
-
