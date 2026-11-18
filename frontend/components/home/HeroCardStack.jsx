@@ -106,11 +106,11 @@ function StackCard({ product, index, total, onSendToBack }) {
         >
           <Image
             src={product.imageUrl}
-            alt={product.name}
+            alt={`${product.name} - Handcrafted 3D Print Figurine India`}
             fill
             priority={isFront}
             loading={isFront ? "eager" : "lazy"}
-            sizes="(max-width: 640px) 300px, 370px"
+            sizes="(max-width: 640px) 280px, 370px"
             className="object-cover pointer-events-none transition-transform duration-500 hover:scale-105"
             draggable={false}
           />
@@ -140,11 +140,11 @@ function StackCard({ product, index, total, onSendToBack }) {
               if (!isFront) e.preventDefault();
               e.stopPropagation();
             }}
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 px-3 py-1.5 rounded-lg border border-amber-200/90 shrink-0 transition-colors z-20 cursor-pointer shadow-2xs active:scale-95"
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 px-3 py-1.5 rounded-lg border border-amber-200/90 shrink-0 transition-all z-20 cursor-pointer shadow-2xs active:scale-95 group/btn"
             aria-label={`View full details of ${product.name}`}
           >
             <span>View Details</span>
-            <span>→</span>
+            <ArrowRight className="w-3.5 h-3.5 text-amber-700 transition-transform group-hover/btn:translate-x-0.5" />
           </Link>
         </div>
       </div>
@@ -161,6 +161,13 @@ export default function HeroCardStack({ initialProducts = [] }) {
   const [isPaused, setIsPaused] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Sync initialProducts if provided or changed
+  useEffect(() => {
+    if (Array.isArray(initialProducts) && initialProducts.length > 0 && items.length === 0) {
+      setItems(initialProducts.map(formatCardProduct));
+    }
+  }, [initialProducts, items.length]);
+
   useEffect(() => {
     setMounted(true);
     productsAPI
@@ -168,7 +175,7 @@ export default function HeroCardStack({ initialProducts = [] }) {
       .then((res) => {
         if (res && res.products && res.products.length > 0) {
           setItems(res.products.map(formatCardProduct));
-        } else {
+        } else if (items.length === 0) {
           return productsAPI.getAll({ featured: "true", limit: 8 }).then((fallbackRes) => {
             if (fallbackRes && fallbackRes.products && fallbackRes.products.length > 0) {
               setItems(fallbackRes.products.map(formatCardProduct));
@@ -185,7 +192,7 @@ export default function HeroCardStack({ initialProducts = [] }) {
       .catch((err) => {
         console.warn("Could not load dynamic hero products:", err.message);
       });
-  }, []);
+  }, [items.length]);
 
   const sendToBack = useCallback((id) => {
     setItems((prev) => {
@@ -227,9 +234,10 @@ export default function HeroCardStack({ initialProducts = [] }) {
       .filter((c) => c.isVisible);
   }, [items]);
 
-  if (!mounted || items.length === 0) {
+  // Fast zero-waterfall: if items exist (e.g. from SSR initialProducts), render immediately without waiting for mounted!
+  if (items.length === 0) {
     return (
-      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] h-[420px] xs:h-[450px] sm:h-[480px] flex items-center justify-center bg-stone-100/80 rounded-2xl border border-stone-200">
+      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] h-[390px] xs:h-[420px] sm:h-[460px] flex items-center justify-center bg-stone-100/80 rounded-2xl border border-stone-200">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-amber-600 rounded-full animate-spin" />
       </div>
     );
@@ -244,8 +252,14 @@ export default function HeroCardStack({ initialProducts = [] }) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* 3D Card Stack Stage with Left and Right Chevrons */}
-      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] h-[420px] xs:h-[450px] sm:h-[480px]">
+      {/* 3D Card Stack Stage with Dynamic Depth Entrance Animation */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 30, rotateY: -8 }}
+        animate={{ opacity: 1, scale: 1, y: 0, rotateY: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.25 }}
+        style={{ perspective: 1000 }}
+        className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] h-[390px] xs:h-[420px] sm:h-[460px] will-change-transform transform-gpu"
+      >
         {visibleCards.map(({ prod, idx }) => (
           <StackCard
             key={prod.id}
@@ -255,7 +269,7 @@ export default function HeroCardStack({ initialProducts = [] }) {
             onSendToBack={sendToBack}
           />
         ))}
-      </div>
+      </motion.div>
 
       {/* Clean Centered Scroll Status Points / Indicator Dots (All devices) */}
       <div className="mt-5 flex items-center justify-center gap-1.5 w-full py-2">

@@ -63,6 +63,19 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Dual Token Architecture: Refresh Tokens Storage & Server Revocation
+    refreshTokens: [
+      {
+        token: { type: String, required: true },
+        expiresAt: { type: Date, required: true },
+        userAgent: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -93,6 +106,7 @@ userSchema.methods.toJSON = function () {
   delete obj.resetPasswordOtp;
   delete obj.resetPasswordToken;
   delete obj.resetPasswordExpires;
+  delete obj.refreshTokens;
   return obj;
 };
 

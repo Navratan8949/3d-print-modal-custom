@@ -226,7 +226,9 @@ export default function ProductDetailView({ product }) {
           <div className="relative w-full rounded-3xl bg-stone-100/70 border border-stone-200/90 shadow-md overflow-hidden group flex items-center justify-center min-h-[320px]">
             <img
               src={resolveImageUrl(selectedImage)}
-              alt={product.name}
+              alt={`${product.name} - Handcrafted 3D printed custom creation in India`}
+              loading="eager"
+              fetchPriority="high"
               onError={(e) => handleImageError(e)}
               className="w-full h-auto max-h-[85vh] object-contain rounded-2xl transition-all duration-300"
             />
@@ -292,7 +294,8 @@ export default function ProductDetailView({ product }) {
                 >
                   <img
                     src={resolveImageUrl(img)}
-                    alt={`${product.name} perspective ${idx + 1}`}
+                    alt={`${product.name} 3D perspective angle ${idx + 1}`}
+                    loading="lazy"
                     onError={(e) => handleImageError(e)}
                     className="w-full h-full object-contain rounded-xl"
                   />

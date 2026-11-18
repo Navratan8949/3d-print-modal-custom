@@ -8,21 +8,91 @@ const {
   sendInBackground,
 } = require("../utils/sendMail");
 
-const createToken = (user) => {
-  if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not configured");
+const getAccessSecret = () =>
+  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+const getRefreshSecret = () =>
+  process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+
+const generateAccessToken = (user) => {
+  const secret = getAccessSecret();
+  if (!secret) {
+    throw new Error("JWT Secret is not configured");
   }
   return jwt.sign(
     {
-      userId: user._id,
+      userId: user._id.toString(),
       role: user.role,
       email: user.email,
+      tokenVersion: user.tokenVersion || 0,
     },
-    process.env.JWT_SECRET,
+    secret,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+      expiresIn: process.env.JWT_EXPIRES_IN || "15m",
     }
   );
+};
+
+const generateRefreshToken = (user) => {
+  const secret = getRefreshSecret();
+  if (!secret) {
+    throw new Error("JWT Secret is not configured");
+  }
+  return jwt.sign(
+    {
+      userId: user._id.toString(),
+      tokenVersion: user.tokenVersion || 0,
+    },
+    secret,
+    {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+    }
+  );
+};
+
+const setRefreshTokenCookie = (res, refreshToken) => {
+  const isProduction = process.env.NODE_ENV === "production";
+  res.cookie("prime3d_refresh_token", refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    path: "/",
+  });
+};
+
+const clearRefreshTokenCookie = (res) => {
+  const isProduction = process.env.NODE_ENV === "production";
+  res.cookie("prime3d_refresh_token", "", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    expires: new Date(0),
+    path: "/",
+  });
+};
+
+const saveUserRefreshToken = async (user, refreshToken, req) => {
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const userAgent = req?.headers?.["user-agent"] || "";
+
+  if (!Array.isArray(user.refreshTokens)) {
+    user.refreshTokens = [];
+  }
+
+  // Prune expired tokens and maintain at most 9 so after pushing it has 10
+  const now = new Date();
+  user.refreshTokens = user.refreshTokens
+    .filter((t) => t.expiresAt && new Date(t.expiresAt) > now)
+    .slice(-9);
+
+  user.refreshTokens.push({
+    token: refreshToken,
+    expiresAt,
+    userAgent,
+    createdAt: new Date(),
+  });
+
+  await user.save();
 };
 
 // ==========================================
@@ -73,9 +143,11 @@ exports.register = async (req, res) => {
       role: userRole,
     });
 
-    await user.save();
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    const token = createToken(user);
+    await saveUserRefreshToken(user, refreshToken, req);
+    setRefreshTokenCookie(res, refreshToken);
 
     // Send welcome email in background
     sendInBackground(async () => {
@@ -85,7 +157,8 @@ exports.register = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Registration successful! Welcome to Prime 3D Printing Lab.",
-      token,
+      accessToken,
+      token: accessToken, // Alias for backward compatibility
       user: user.toJSON(),
     });
   } catch (error) {
@@ -137,12 +210,17 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = createToken(user);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    await saveUserRefreshToken(user, refreshToken, req);
+    setRefreshTokenCookie(res, refreshToken);
 
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      token,
+      accessToken,
+      token: accessToken, // Alias for backward compatibility
       user: user.toJSON(),
     });
   } catch (error) {
@@ -400,17 +478,156 @@ exports.changePassword = async (req, res) => {
     }
 
     user.password = newPassword;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.refreshTokens = [];
     await user.save();
+    clearRefreshTokenCookie(res);
 
     return res.status(200).json({
       success: true,
-      message: "Password changed successfully",
+      message: "Password changed successfully. All other sessions have been logged out.",
     });
   } catch (error) {
     console.error("Change password error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to change password",
+    });
+  }
+};
+
+// ==========================================
+// REFRESH TOKEN (DUAL TOKEN ARCHITECTURE)
+// POST /api/auth/refresh
+// ==========================================
+exports.refreshToken = async (req, res) => {
+  try {
+    const tokenFromCookie = req.cookies?.prime3d_refresh_token;
+    const tokenFromBody = req.body?.refreshToken;
+    const incomingToken = tokenFromCookie || tokenFromBody;
+
+    if (!incomingToken) {
+      return res.status(401).json({
+        success: false,
+        message: "No refresh token provided",
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(incomingToken, getRefreshSecret());
+    } catch (err) {
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired refresh token. Please sign in again.",
+      });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user || user.status !== "active") {
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: "User account not found or is inactive",
+      });
+    }
+
+    // Verify tokenVersion to support instant server-side revocation
+    if (
+      decoded.tokenVersion !== undefined &&
+      decoded.tokenVersion !== (user.tokenVersion || 0)
+    ) {
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: "Session revoked. Please sign in again.",
+      });
+    }
+
+    if (!Array.isArray(user.refreshTokens)) {
+      user.refreshTokens = [];
+    }
+
+    // Check if refresh token exists in user's saved tokens
+    const tokenRecordIndex = user.refreshTokens.findIndex(
+      (t) => t.token === incomingToken
+    );
+
+    if (tokenRecordIndex === -1) {
+      // Suspected token reuse or revoked session: invalidate all tokens for security!
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      user.refreshTokens = [];
+      await user.save();
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token is invalid or has already been used. Please log in again.",
+      });
+    }
+
+    // Issue new 15-minute Access Token
+    const newAccessToken = generateAccessToken(user);
+
+    // Refresh Token Rotation: issue a new refresh token and replace old one
+    const newRefreshToken = generateRefreshToken(user);
+    user.refreshTokens.splice(tokenRecordIndex, 1);
+    user.refreshTokens.push({
+      token: newRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers["user-agent"] || "",
+      createdAt: new Date(),
+    });
+
+    await user.save();
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    return res.status(200).json({
+      success: true,
+      accessToken: newAccessToken,
+      token: newAccessToken, // Backward compatibility alias
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    clearRefreshTokenCookie(res);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to refresh token",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// LOGOUT (SERVER-SIDE REVOCATION)
+// POST /api/auth/logout
+// ==========================================
+exports.logout = async (req, res) => {
+  try {
+    const tokenFromCookie = req.cookies?.prime3d_refresh_token;
+    const tokenFromBody = req.body?.refreshToken;
+    const targetToken = tokenFromCookie || tokenFromBody;
+
+    if (targetToken) {
+      await User.updateOne(
+        { "refreshTokens.token": targetToken },
+        { $pull: { refreshTokens: { token: targetToken } } }
+      );
+    }
+
+    clearRefreshTokenCookie(res);
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    clearRefreshTokenCookie(res);
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed",
     });
   }
 };

@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
-import { CATEGORIES as DEFAULT_CATEGORIES } from "@/data/categories";
 import ProductVisual from "@/components/products/ProductVisual";
 import { categoriesAPI } from "@/lib/api";
 
 export default function FeaturedCategories() {
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     categoriesAPI
@@ -17,12 +17,22 @@ export default function FeaturedCategories() {
       .then((res) => {
         if (res && res.categories && res.categories.length > 0) {
           setCategories(res.categories);
+        } else {
+          setCategories([]);
         }
       })
       .catch((err) => {
-        console.warn("Using default categories for home:", err.message);
+        console.warn("Categories fetch error:", err.message);
+        setCategories([]);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
+
+  if (!loading && categories.length === 0) {
+    return null;
+  }
 
   const visualMap = {
     "custom-3d-figurines": "figurine-couple",

@@ -81,11 +81,13 @@ exports.createOrder = async (req, res) => {
     }
 
     // Attach uploaded reference photo if any
+    let allPhotoUrls = [];
     if (req.files && req.files.length > 0) {
-      const photoUrls = req.files.map((file) => `/uploads/orders/${file.filename}`);
+      allPhotoUrls = req.files.map((file) => `/uploads/orders/${file.filename}`);
       parsedItems = parsedItems.map((item, idx) => ({
         ...item,
-        referencePhotoUrl: photoUrls[idx] || photoUrls[0] || null,
+        referencePhotoUrl: allPhotoUrls[idx] || allPhotoUrls[0] || null,
+        referencePhotos: allPhotoUrls,
         hasPhoto: true,
       }));
     }
@@ -136,6 +138,10 @@ exports.createOrder = async (req, res) => {
             img = "/images/products/fullbody-figurine-hero.jpeg";
           }
 
+          const itemPhotos = Array.isArray(i.referencePhotos) && i.referencePhotos.length > 0
+            ? i.referencePhotos
+            : (i.referencePhotoUrl ? [i.referencePhotoUrl] : allPhotoUrls);
+
           return {
             product: i.product || i._id || null,
             productId: String(prodId),
@@ -145,11 +151,13 @@ exports.createOrder = async (req, res) => {
             quantity: Number(i.quantity) || 1,
             image: img,
             customization: i.customization || {},
-            hasPhoto: Boolean(i.hasPhoto || i.referencePhotoUrl),
-            referencePhotoUrl: i.referencePhotoUrl || null,
+            hasPhoto: Boolean(i.hasPhoto || i.referencePhotoUrl || itemPhotos.length > 0),
+            referencePhotoUrl: i.referencePhotoUrl || itemPhotos[0] || null,
+            referencePhotos: itemPhotos,
           };
         })
       ),
+      referencePhotos: allPhotoUrls,
       totalAmount: Number(calculatedTotal),
       itemCount: parsedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0),
       orderSource,
@@ -373,6 +381,113 @@ exports.updateOrderStatus = async (req, res) => {
 };
 
 // ==========================================
+// UPDATE ORDER REFERENCE PHOTOS (CUSTOMER / ADMIN)
+// Allowed up to 5 photos until order is in production
+// ==========================================
+exports.updateOrderPhotos = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Production check: Cannot update once in production, shipped, or delivered
+    const lockedStatuses = ["in_production", "shipped", "delivered"];
+    if (lockedStatuses.includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Photos cannot be modified while order is ${order.status.replace("_", " ")}. 3D fabrication has already started.`,
+      });
+    }
+
+    // Permission check: admin or order owner (registered or guest by phone/email)
+    const isAdmin = req.user && ["admin", "super_admin"].includes(req.user.role);
+    const isOwner = req.user && order.user && order.user.toString() === req.user.userId;
+    const customerPhone = (req.body.phone || req.headers["x-customer-phone"] || "").trim();
+    const customerEmail = (req.body.email || req.headers["x-customer-email"] || "").trim().toLowerCase();
+    const isGuestOwner =
+      Boolean(customerPhone && order.customer?.phone === customerPhone) ||
+      Boolean(customerEmail && order.customer?.email?.toLowerCase() === customerEmail);
+
+    if (!isAdmin && !isOwner && !isGuestOwner && order.user) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this order's photos",
+      });
+    }
+
+    // Parse existing photos to keep
+    let existingPhotos = [];
+    if (req.body.existingPhotos) {
+      if (Array.isArray(req.body.existingPhotos)) {
+        existingPhotos = req.body.existingPhotos;
+      } else if (typeof req.body.existingPhotos === "string") {
+        try {
+          existingPhotos = JSON.parse(req.body.existingPhotos);
+        } catch {
+          existingPhotos = req.body.existingPhotos
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+      }
+    }
+
+    // Parse new uploaded files
+    const newPhotos = req.files ? req.files.map((f) => `/uploads/orders/${f.filename}`) : [];
+
+    // Combine photos (Max 5)
+    const combinedPhotos = [...existingPhotos, ...newPhotos]
+      .filter((url) => typeof url === "string" && url.trim().length > 0)
+      .slice(0, 5);
+
+    if (combinedPhotos.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide at least one photo (maximum 5 photos)",
+      });
+    }
+
+    // Update order root reference photos
+    order.referencePhotos = combinedPhotos;
+
+    // Update items
+    if (order.items && order.items.length > 0) {
+      order.items[0].referencePhotos = combinedPhotos;
+      order.items[0].referencePhotoUrl = combinedPhotos[0] || null;
+      order.items[0].hasPhoto = true;
+
+      if (!order.items[0].customization) {
+        order.items[0].customization = {};
+      }
+      order.items[0].customization.referencePhotos = combinedPhotos.join(",");
+      order.items[0].customization.referencePhotoUrl = combinedPhotos[0] || null;
+      order.markModified("items");
+    }
+
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Reference photos updated successfully",
+      photos: combinedPhotos,
+      order,
+    });
+  } catch (error) {
+    console.error("Update order photos error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update reference photos",
+    });
+  }
+};
+
+// ==========================================
 // DELETE ORDER (ADMIN)
 // ==========================================
 exports.deleteOrder = async (req, res) => {
@@ -399,4 +514,5 @@ exports.deleteOrder = async (req, res) => {
     });
   }
 };
+
 

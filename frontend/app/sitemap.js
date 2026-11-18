@@ -1,6 +1,3 @@
-import { PRODUCTS } from "@/data/products";
-import { CATEGORIES } from "@/data/categories";
-
 export default async function sitemap() {
   const baseUrl = (
     process.env.APP_URL ||
@@ -38,41 +35,41 @@ export default async function sitemap() {
     },
   ];
 
-  // High-Intent Category Landing Pages
-  const categoryRoutes = CATEGORIES.map((cat) => ({
-    url: `${baseUrl}/shop?category=${cat.slug || cat.id}`,
-    lastModified: currentDate,
-    changeFrequency: "weekly",
-    priority: 0.85,
-  }));
+  const apiUrl =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:5001/api";
 
-  // Dynamic Product Pages with Fallback to Master Catalog
-  const productMap = new Map();
-
-  // Initialize with master catalog products
-  PRODUCTS.forEach((p) => {
-    productMap.set(p.slug || String(p.id), {
-      url: `${baseUrl}/products/${p.slug || p.id}`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    });
-  });
-
-  // Supplement / update with API products if available
+  // Dynamic Category Landing Pages from Server
+  const categoryRoutes = [];
   try {
-    const apiUrl =
-      process.env.INTERNAL_API_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5001/api";
-    const res = await fetch(`${apiUrl}/products?limit=100`, {
-      cache: "no-store",
-    });
+    const res = await fetch(`${apiUrl}/categories`, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.categories) {
+        data.categories.forEach((cat) => {
+          categoryRoutes.push({
+            url: `${baseUrl}/shop?category=${cat.slug || cat.id}`,
+            lastModified: currentDate,
+            changeFrequency: "weekly",
+            priority: 0.85,
+          });
+        });
+      }
+    }
+  } catch {
+    // API not reachable during sitemap build
+  }
+
+  // Dynamic Product Pages from Server
+  const productRoutes = [];
+  try {
+    const res = await fetch(`${apiUrl}/products?limit=200`, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       if (data && data.products) {
         data.products.forEach((p) => {
-          productMap.set(p.slug || String(p.id), {
+          productRoutes.push({
             url: `${baseUrl}/products/${p.slug || p.id}`,
             lastModified: new Date(p.updatedAt || currentDate),
             changeFrequency: "weekly",
@@ -82,10 +79,8 @@ export default async function sitemap() {
       }
     }
   } catch {
-    // master catalog products already populated
+    // API not reachable during sitemap build
   }
-
-  const productRoutes = Array.from(productMap.values());
 
   return [...staticRoutes, ...categoryRoutes, ...productRoutes];
 }

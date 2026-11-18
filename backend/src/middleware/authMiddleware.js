@@ -21,7 +21,17 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(parts[1], process.env.JWT_SECRET);
+    let decoded;
+    const accessSecret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    try {
+      decoded = jwt.verify(parts[1], accessSecret);
+    } catch (verifyErr) {
+      if (process.env.JWT_ACCESS_SECRET && process.env.JWT_SECRET) {
+        decoded = jwt.verify(parts[1], process.env.JWT_SECRET);
+      } else {
+        throw verifyErr;
+      }
+    }
 
     if (!decoded.userId) {
       return res.status(401).json({
@@ -36,6 +46,17 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "User account not found or is inactive",
+      });
+    }
+
+    // Verify tokenVersion for instant server-side revocation on password change or logout-all
+    if (
+      decoded.tokenVersion !== undefined &&
+      decoded.tokenVersion !== (user.tokenVersion || 0)
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Session has been revoked. Please log in again.",
       });
     }
 

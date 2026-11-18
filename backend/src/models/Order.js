@@ -46,6 +46,10 @@ const orderItemSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    referencePhotos: {
+      type: [String],
+      default: [],
+    },
   },
   { _id: true }
 );
@@ -167,6 +171,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["whatsapp", "web"],
       default: "whatsapp",
+    },
+    referencePhotos: {
+      type: [String],
+      default: [],
     },
     whatsappUrl: {
       type: String,

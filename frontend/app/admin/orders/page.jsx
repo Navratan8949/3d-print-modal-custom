@@ -33,7 +33,12 @@ import {
   Info,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
-import { getOrderItemImage } from "@/lib/orderImages";
+import {
+  getOrderItemImage,
+  getOrderReferencePhotos,
+  filterCustomizationSpecs,
+} from "@/lib/orderImages";
+import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
 
 // ==========================================
 // POPULAR INDIAN COURIER PRESETS
@@ -581,61 +586,59 @@ function AdminOrdersContent() {
                     <div className="space-y-3">
                       {ord.items?.map((item, idx) => {
                         const itemImg = getOrderItemImage(item);
+                        const refPhotos = getOrderReferencePhotos(ord, item);
+                        const cleanSpecs = filterCustomizationSpecs(item.customization);
+
                         return (
                           <div
                             key={idx}
-                            className="flex items-start gap-3 text-xs bg-stone-50/60 p-2.5 rounded-2xl border border-stone-100"
+                            className="space-y-2.5 text-xs bg-stone-50/60 p-3 rounded-2xl border border-stone-100"
                           >
-                            <div className="relative shrink-0">
-                              <img
-                                src={itemImg}
-                                alt={item.name}
-                                className="w-14 h-14 object-cover rounded-xl border border-stone-200 bg-stone-100 shadow-2xs"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
-                                }}
-                              />
-                              {item.referencePhotoUrl && (
-                                <a
-                                  href={item.referencePhotoUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700"
-                                  title="View Customer Reference Photo"
-                                >
-                                  <Camera className="w-3 h-3" />
-                                </a>
-                              )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="font-bold text-stone-900 text-sm truncate">{item.name}</div>
-                              <div className="text-[11px] text-stone-500 font-medium mt-0.5">
-                                Qty: <span className="font-bold text-stone-800">{item.quantity}</span> • ₹{item.price} each
+                            <div className="flex items-start gap-3">
+                              <div className="relative shrink-0">
+                                <img
+                                  src={itemImg}
+                                  alt={item.name}
+                                  className="w-14 h-14 object-cover rounded-xl border border-stone-200 bg-stone-100 shadow-2xs"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                                  }}
+                                />
                               </div>
 
-                              {item.customization && Object.keys(item.customization).length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                  {Object.entries(item.customization).map(([k, v]) =>
-                                    v ? (
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-stone-900 text-sm truncate">{item.name}</div>
+                                <div className="text-[11px] text-stone-500 font-medium mt-0.5">
+                                  Qty: <span className="font-bold text-stone-800">{item.quantity}</span> • ₹{item.price} each
+                                </div>
+
+                                {/* Clean Customization Specs (filtered from internal paths) */}
+                                {cleanSpecs.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {cleanSpecs.map(([k, v]) => (
                                       <span
                                         key={k}
                                         className="px-2 py-0.5 text-[10px] bg-white text-stone-700 font-medium rounded-md border border-stone-200/90 shadow-2xs"
                                       >
                                         <strong className="text-stone-500 font-semibold">{k}:</strong> {String(v)}
                                       </span>
-                                    ) : null
-                                  )}
-                                </div>
-                              )}
-
-                              {item.hasPhoto && (
-                                <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-amber-700 font-semibold">
-                                  <Camera className="w-3 h-3" /> Custom photo uploaded
-                                </span>
-                              )}
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+
+                            {/* Customer Reference Photos Gallery (Up to 5) */}
+                            {refPhotos.length > 0 && (
+                              <div className="pt-2 border-t border-stone-200/60">
+                                <OrderReferenceGallery
+                                  photos={refPhotos}
+                                  title="Customer Reference Photos"
+                                  maxPhotos={5}
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}

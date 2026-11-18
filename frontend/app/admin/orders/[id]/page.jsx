@@ -33,7 +33,12 @@ import {
   Zap,
 } from "lucide-react";
 import { ordersAPI } from "@/lib/api";
-import { getOrderItemImage } from "@/lib/orderImages";
+import {
+  getOrderItemImage,
+  getOrderReferencePhotos,
+  filterCustomizationSpecs,
+} from "@/lib/orderImages";
+import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
 
 // Indian Courier Presets
 const COURIER_PRESETS = [
@@ -652,6 +657,9 @@ export default function AdminOrderDetailPage({ params }) {
             <div className="divide-y divide-stone-100">
               {order.items?.map((item, idx) => {
                 const itemImg = getOrderItemImage(item);
+                const refPhotos = getOrderReferencePhotos(order, item);
+                const cleanSpecs = filterCustomizationSpecs(item.customization);
+
                 return (
                   <div key={idx} className="p-5 space-y-4 hover:bg-stone-50/40 transition-colors">
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -667,16 +675,6 @@ export default function AdminOrderDetailPage({ params }) {
                               e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
                             }}
                           />
-                          {item.referencePhotoUrl && (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewPhoto(item.referencePhotoUrl)}
-                              className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs hover:bg-amber-700 transition-colors"
-                              title="View Customer Reference Photo"
-                            >
-                              <Camera className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
 
                         <div className="space-y-1">
@@ -710,52 +708,32 @@ export default function AdminOrderDetailPage({ params }) {
                       </div>
                     </div>
 
-                    {/* Customization Details Box */}
-                    {item.customization && Object.keys(item.customization).length > 0 && (
+                    {/* Customization Details Box (clean specs only) */}
+                    {cleanSpecs.length > 0 && (
                       <div className="bg-amber-50/40 border border-amber-200/70 rounded-2xl p-3.5 space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider">
                           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                           <span>Custom 3D Fabrication Specs</span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          {Object.entries(item.customization).map(([k, v]) =>
-                            v ? (
-                              <div key={k} className="p-2 bg-white/90 rounded-xl border border-amber-100">
-                                <span className="text-stone-500 block text-[10px] uppercase font-bold">{k}:</span>
-                                <span className="text-stone-900 font-medium">{String(v)}</span>
-                              </div>
-                            ) : null
-                          )}
+                          {cleanSpecs.map(([k, v]) => (
+                            <div key={k} className="p-2 bg-white/90 rounded-xl border border-amber-100">
+                              <span className="text-stone-500 block text-[10px] uppercase font-bold">{k}:</span>
+                              <span className="text-stone-900 font-medium">{String(v)}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Attached Reference Photo Banner */}
-                    {(item.hasPhoto || item.referencePhotoUrl) && (
-                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                            📸
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-stone-900">
-                              Reference Photo Attached by Customer
-                            </p>
-                            <p className="text-[11px] text-stone-500">
-                              Used for face sculpting, figurine proportioning, or custom 3D model geometry
-                            </p>
-                          </div>
-                        </div>
-
-                        {item.referencePhotoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setPreviewPhoto(item.referencePhotoUrl)}
-                            className="px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-stone-700 text-xs font-semibold hover:bg-stone-100 transition-colors shrink-0 cursor-pointer"
-                          >
-                            View Photo
-                          </button>
-                        )}
+                    {/* Customer Reference Photos Gallery (Up to 5) */}
+                    {refPhotos.length > 0 && (
+                      <div className="pt-2">
+                        <OrderReferenceGallery
+                          photos={refPhotos}
+                          title="Customer Reference Photos"
+                          maxPhotos={5}
+                        />
                       </div>
                     )}
                   </div>

@@ -24,7 +24,14 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI, paymentAPI } from "@/lib/api";
 import { loadRazorpayScript } from "@/lib/razorpay";
-import { getOrderItemImage } from "@/lib/orderImages";
+import {
+  getOrderItemImage,
+  getOrderReferencePhotos,
+  filterCustomizationSpecs,
+  isPhotoEditingAllowed,
+} from "@/lib/orderImages";
+import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
+import CustomerPhotoUpdateModal from "@/components/orders/CustomerPhotoUpdateModal";
 
 export default function CustomerOrderDetailPage({ params }) {
   const unwrappedParams = use(params);
@@ -36,6 +43,7 @@ export default function CustomerOrderDetailPage({ params }) {
   const [error, setError] = useState("");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const handlePayNow = async () => {
     if (!order) return;
@@ -369,90 +377,87 @@ export default function CustomerOrderDetailPage({ params }) {
         </div>
 
         <div className="divide-y divide-stone-100">
-          {order.items?.map((item, idx) => (
-            <div key={idx} className="p-5 space-y-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  {(() => {
-                    const itemImg = getOrderItemImage(item);
-                    return (
-                      <div className="relative shrink-0">
-                        <img
-                          src={itemImg}
-                          alt={item.name}
-                          className="w-16 h-16 object-cover rounded-2xl border border-stone-200 bg-stone-100 shadow-2xs"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
-                          }}
-                        />
-                        {item.referencePhotoUrl && (
-                          <a
-                            href={item.referencePhotoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-1 shadow-xs"
-                            title="Reference photo attached"
-                          >
-                            <Camera className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })()}
+          {order.items?.map((item, idx) => {
+            const itemImg = getOrderItemImage(item);
+            const refPhotos = getOrderReferencePhotos(order, item);
+            const cleanSpecs = filterCustomizationSpecs(item.customization);
+            const canEditPhotos = isPhotoEditingAllowed(order);
 
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-sm text-stone-900">{item.name}</h3>
-                    <p className="text-xs text-stone-500">
-                      ₹{item.price} × {item.quantity} unit(s)
-                    </p>
-                    {item.slug && (
-                      <Link
-                        href={`/products/${item.slug}`}
-                        className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:underline"
-                      >
-                        <span>View Product Page</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    )}
+            return (
+              <div key={idx} className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="relative shrink-0">
+                      <img
+                        src={itemImg}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-2xl border border-stone-200 bg-stone-100 shadow-2xs"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "/images/products/fullbody-figurine-hero.jpeg";
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-sm text-stone-900">{item.name}</h3>
+                      <p className="text-xs text-stone-500">
+                        ₹{item.price} × {item.quantity} unit(s)
+                      </p>
+                      {item.slug && (
+                        <Link
+                          href={`/products/${item.slug}`}
+                          className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:underline"
+                        >
+                          <span>View Product Page</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="font-serif font-bold text-sm text-stone-900">
+                      ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="font-serif font-bold text-sm text-stone-900">
-                    ₹{(Number(item.price) || 0) * (Number(item.quantity) || 1)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Customization Details */}
-              {item.customization && Object.keys(item.customization).length > 0 && (
-                <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-3 space-y-1 text-xs">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
-                    Customization Specs:
-                  </span>
-                  <div className="flex flex-wrap gap-2 pt-0.5">
-                    {Object.entries(item.customization).map(([k, v]) =>
-                      v ? (
+                {/* Customization Details (Clean specs only, no raw technical paths) */}
+                {cleanSpecs.length > 0 && (
+                  <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-3 space-y-1 text-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                      Customization Specs:
+                    </span>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {cleanSpecs.map(([k, v]) => (
                         <span
                           key={k}
                           className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-800 text-[11px]"
                         >
                           <strong>{k}:</strong> {String(v)}
                         </span>
-                      ) : null
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {item.hasPhoto && (
-                <p className="text-[11px] text-amber-800 font-semibold flex items-center gap-1 pt-1">
-                  <span>📸 Reference photo shared with Studio</span>
-                </p>
-              )}
-            </div>
-          ))}
+                {/* Customer Reference Photos Gallery with Update Option */}
+                {(refPhotos.length > 0 || item.hasPhoto) && (
+                  <div className="pt-2">
+                    <OrderReferenceGallery
+                      photos={refPhotos}
+                      title="Your Reference Photos"
+                      allowUpdate={canEditPhotos}
+                      isProductionLocked={!canEditPhotos}
+                      onOpenUpdate={() => setIsPhotoModalOpen(true)}
+                      maxPhotos={5}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Pricing & Payment Summary Footer */}
@@ -541,6 +546,16 @@ export default function CustomerOrderDetailPage({ params }) {
           </div>
         </div>
       </div>
+
+      {/* Customer Reference Photo Upload / Update Modal */}
+      <CustomerPhotoUpdateModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        order={order}
+        onPhotosUpdated={(updatedOrder) => {
+          setOrder(updatedOrder);
+        }}
+      />
     </div>
   );
 }

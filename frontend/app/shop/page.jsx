@@ -6,8 +6,6 @@ import { Search, X, SlidersHorizontal, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
 import ProductGrid from "@/components/products/ProductGrid";
 import PromoMiniatureBanner from "@/components/common/PromoMiniatureBanner";
-import { CATEGORIES } from "@/data/categories";
-import { PRODUCTS } from "@/data/products";
 import { productsAPI, categoriesAPI } from "@/lib/api";
 
 function ShopContent() {
@@ -16,19 +14,19 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [productsList, setProductsList] = useState(PRODUCTS);
-  const [categoriesList, setCategoriesList] = useState(CATEGORIES);
-  const [loading, setLoading] = useState(false);
+  const [productsList, setProductsList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     categoriesAPI
       .getAll()
       .then((res) => {
-        if (res && res.categories && res.categories.length > 0) {
+        if (res && res.categories) {
           setCategoriesList(res.categories);
         }
       })
-      .catch((e) => console.warn("Using default categories:", e.message));
+      .catch((e) => console.warn("Categories fetch error:", e.message));
   }, []);
 
   useEffect(() => {
@@ -38,32 +36,28 @@ function ShopContent() {
   }, [categoryParam]);
 
   useEffect(() => {
+    setLoading(true);
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
-        if (res && res.products && res.products.length > 0) {
-          // Merge dynamic products with master products to guarantee completeness
-          const dbProducts = res.products;
-          const merged = [...dbProducts];
-          const dbSlugs = new Set(dbProducts.map((p) => p.slug || String(p.id)));
-
-          PRODUCTS.forEach((staticProd) => {
-            if (!dbSlugs.has(staticProd.slug) && !dbSlugs.has(String(staticProd.id))) {
-              merged.push(staticProd);
-            }
-          });
-
-          setProductsList(merged);
+        if (res && res.products) {
+          setProductsList(res.products);
+        } else {
+          setProductsList([]);
         }
       })
       .catch((err) => {
-        console.warn("Using master catalog fallback:", err.message);
+        console.warn("Failed to load products from server:", err.message);
+        setProductsList([]);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 
   // Filtering and Sorting logic
   const filteredProducts = useMemo(() => {
-    let result = Array.isArray(productsList) ? [...productsList] : [...PRODUCTS];
+    let result = Array.isArray(productsList) ? [...productsList] : [];
 
     // Robust category filter matching slug, id, and normalized name
     if (selectedCategory && selectedCategory !== "all") {
@@ -221,11 +215,10 @@ function ShopContent() {
           <button
             type="button"
             onClick={() => setSelectedCategory("all")}
-            className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-              selectedCategory === "all"
+            className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${selectedCategory === "all"
                 ? "bg-stone-900 text-white shadow-md shadow-stone-900/20 ring-2 ring-stone-900"
                 : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
-            }`}
+              }`}
           >
             All Products ({productsList.length})
           </button>
@@ -236,11 +229,10 @@ function ShopContent() {
                 key={cat.id || cat.slug}
                 type="button"
                 onClick={() => setSelectedCategory(cat.slug || cat.id)}
-                className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                  isSelected
+                className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${isSelected
                     ? "bg-amber-600 text-white shadow-md shadow-amber-600/25 ring-2 ring-amber-600"
                     : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
-                }`}
+                  }`}
               >
                 {cat.name}
               </button>
