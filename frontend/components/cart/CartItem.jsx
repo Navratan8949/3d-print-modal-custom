@@ -6,8 +6,14 @@ import ProductVisual from "@/components/products/ProductVisual";
 
 export default function CartItem({ item, onUpdateQuantity, onRemove, onClose }) {
   const customizationEntries = Object.entries(item.customization || {}).filter(
-    ([, v]) => Boolean(v)
+    ([k, v]) => Boolean(v) && !k.toLowerCase().includes("photo") && !k.toLowerCase().includes("reference")
   );
+
+  const photoSrc =
+    item.referencePhotoUrl ||
+    item.customization?.referencePhotoUrl ||
+    item.referencePhotos?.[0]?.url ||
+    item.referencePhotos?.[0]?.preview;
 
   return (
     <div className="flex gap-4 p-4 border border-stone-200/80 rounded-xl bg-white shadow-2xs hover:border-amber-200 transition-colors">
@@ -59,13 +65,27 @@ export default function CartItem({ item, onUpdateQuantity, onRemove, onClose }) 
             </div>
           )}
 
-          {/* Photo Indicator */}
-          {item.hasPhoto && (
+          {/* Photo Indicator / Thumbnail Preview */}
+          {photoSrc ? (
+            <div className="mt-2 flex items-center gap-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-900">
+              <img
+                src={photoSrc}
+                alt="Reference photo"
+                className="w-8 h-8 rounded-md object-cover border border-emerald-300 shrink-0"
+              />
+              <div className="min-w-0 flex-1 truncate">
+                <span className="font-bold block truncate">✓ Reference Photo Attached</span>
+                <span className="block text-[10px] text-emerald-700 truncate">
+                  {item.referencePhotos?.[0]?.name || "HD photo ready for 3D sculpt"}
+                </span>
+              </div>
+            </div>
+          ) : item.hasPhoto ? (
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
               <Camera className="w-3 h-3 text-amber-600" />
               <span>Reference photo to attach on WhatsApp</span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Pricing & Quantity Controls */}

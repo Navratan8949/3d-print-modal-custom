@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { createProductWhatsAppUrl } from "@/lib/whatsapp";
+import { ordersAPI } from "@/lib/api";
 import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function ProductDetailView({ product }) {
@@ -80,10 +81,33 @@ export default function ProductDetailView({ product }) {
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState("description"); // description | howItWorks | specs | reviews
 
-  const handlePhotosUpload = (e) => {
+  const handlePhotosUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setUploadedPhotos((prev) => [...prev, ...files].slice(0, 5)); // up to 5 reference photos
+    if (files.length === 0) return;
+
+    for (const file of files.slice(0, 5)) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const localDataUrl = event.target.result;
+        let finalUrl = localDataUrl;
+
+        try {
+          const fd = new FormData();
+          fd.append("photo", file);
+          const uploadRes = await ordersAPI.uploadPhoto(fd);
+          if (uploadRes && uploadRes.photoUrl) {
+            finalUrl = uploadRes.photoUrl;
+          }
+        } catch {
+          // If backend upload fails, base64 dataUrl is 100% reliable
+        }
+
+        setUploadedPhotos((prev) => {
+          if (prev.length >= 5) return prev;
+          return [...prev, { name: file.name, url: finalUrl, preview: localDataUrl }];
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -93,12 +117,20 @@ export default function ProductDetailView({ product }) {
 
   // Add to Cart handler
   const handleAddToCart = () => {
+    const photoUrls = uploadedPhotos.map((p) => p.url || p.preview);
+    const firstPhoto = photoUrls[0] || null;
+
     const customization = {
       Scale: selectedSize,
       Finish: selectedFinish,
       ...(personalizationText ? { "Personalization / Engraving": personalizationText } : {}),
       ...(uploadedPhotos.length > 0
-        ? { "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})` }
+        ? {
+            "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
+            referencePhotoUrl: firstPhoto,
+            referencePhotos: photoUrls,
+            referencePhotoNames: uploadedPhotos.map((p) => p.name),
+          }
         : {}),
     };
 
@@ -107,6 +139,8 @@ export default function ProductDetailView({ product }) {
         ...product,
         price: currentUnitPrice,
         hasPhoto: uploadedPhotos.length > 0,
+        referencePhotoUrl: firstPhoto,
+        referencePhotos: photoUrls,
       },
       quantity,
       customization
@@ -118,6 +152,9 @@ export default function ProductDetailView({ product }) {
 
   // Instant Buy Now handler (Direct 1-Click to Checkout)
   const handleBuyNow = () => {
+    const photoUrls = uploadedPhotos.map((p) => p.url || p.preview);
+    const firstPhoto = photoUrls[0] || null;
+
     const customization = {
       Scale: selectedSize,
       Finish: selectedFinish,
@@ -125,6 +162,9 @@ export default function ProductDetailView({ product }) {
       ...(uploadedPhotos.length > 0
         ? {
             "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
+            referencePhotoUrl: firstPhoto,
+            referencePhotos: photoUrls,
+            referencePhotoNames: uploadedPhotos.map((p) => p.name),
           }
         : {}),
     };
@@ -134,6 +174,8 @@ export default function ProductDetailView({ product }) {
         ...product,
         price: currentUnitPrice,
         hasPhoto: uploadedPhotos.length > 0,
+        referencePhotoUrl: firstPhoto,
+        referencePhotos: photoUrls,
       },
       quantity,
       customization
@@ -511,7 +553,7 @@ export default function ProductDetailView({ product }) {
                     >
                       <div className="relative h-8 w-8 rounded overflow-hidden shrink-0 bg-stone-100">
                         <img
-                          src={URL.createObjectURL(photo)}
+                          src={photo.url || photo.preview || (photo instanceof Blob ? URL.createObjectURL(photo) : "")}
                           alt={`Reference ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />

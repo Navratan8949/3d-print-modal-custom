@@ -16,9 +16,9 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [productsList, setProductsList] = useState(PRODUCTS);
-  const [categoriesList, setCategoriesList] = useState(CATEGORIES);
-  const [loading, setLoading] = useState(false);
+  const [productsList, setProductsList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     categoriesAPI
@@ -26,9 +26,14 @@ function ShopContent() {
       .then((res) => {
         if (res && res.categories && res.categories.length > 0) {
           setCategoriesList(res.categories);
+        } else {
+          setCategoriesList(CATEGORIES);
         }
       })
-      .catch((e) => console.warn("Using default categories:", e.message));
+      .catch((e) => {
+        console.warn("Using default categories fallback:", e.message);
+        setCategoriesList(CATEGORIES);
+      });
   }, []);
 
   useEffect(() => {
@@ -38,26 +43,20 @@ function ShopContent() {
   }, [categoryParam]);
 
   useEffect(() => {
+    setLoading(true);
     productsAPI
       .getAll({ limit: 100 })
       .then((res) => {
-        if (res && res.products && res.products.length > 0) {
-          // Merge dynamic products with master products to guarantee completeness
-          const dbProducts = res.products;
-          const merged = [...dbProducts];
-          const dbSlugs = new Set(dbProducts.map((p) => p.slug || String(p.id)));
-
-          PRODUCTS.forEach((staticProd) => {
-            if (!dbSlugs.has(staticProd.slug) && !dbSlugs.has(String(staticProd.id))) {
-              merged.push(staticProd);
-            }
-          });
-
-          setProductsList(merged);
+        if (res && Array.isArray(res.products)) {
+          // Exclusively use products from the MongoDB database
+          setProductsList(res.products);
         }
       })
       .catch((err) => {
-        console.warn("Using master catalog fallback:", err.message);
+        console.warn("Error fetching products from database:", err.message);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 

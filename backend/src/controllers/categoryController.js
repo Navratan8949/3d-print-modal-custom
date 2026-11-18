@@ -1,104 +1,12 @@
 const Category = require("../models/Category");
 const Product = require("../models/Product");
 
-// Initial categories to seed if DB collection is empty
-const DEFAULT_CATEGORIES = [
-  {
-    name: "Custom 3D Figurines",
-    slug: "custom-3d-figurines",
-    shortDescription: "Turn your cherished photographs into sculpted miniature keepsakes.",
-    description: "Handcrafted 3D sculpted miniatures replicating your favorite memories, family portraits, couples, or beloved pets with exquisite detailing.",
-    itemCount: "7+ Creations",
-    tagline: "Your memories immortalized in three dimensions",
-    accentColor: "#D97706",
-    image_url: "/images/products/fullbody-figurine-hero.jpeg",
-    order: 1,
-    status: "active",
-  },
-  {
-    name: "3D Printed Sacred Idols",
-    slug: "3d-printed-idols",
-    shortDescription: "Sacred devotional deity sculptures crafted with spiritual reverence.",
-    description: "Exquisite devotional idols featuring intricate spiritual iconography, pristine finishes, and sacred precision for home temples and sacred spaces.",
-    itemCount: "5+ Sacred Idols",
-    tagline: "Devotion and sacred art rendered in fine detail",
-    accentColor: "#D97706",
-    image_url: "/images/products/khatu-shyam-hero.jpeg",
-    order: 2,
-    status: "active",
-  },
-  {
-    name: "Home & Desk Decor",
-    slug: "decor",
-    shortDescription: "Contemporary clocks, sculptural vases, bouquets, and tabletop accents.",
-    description: "Modern architectural accents, ever-lasting sculpted floral arrangements, and statement decorative elements for discerning interiors.",
-    itemCount: "12+ Items",
-    tagline: "Artistic sculptural accents for modern spaces",
-    accentColor: "#92400E",
-    image_url: "/images/products/flower-bouquet-hero.jpeg",
-    order: 3,
-    status: "active",
-  },
-  {
-    name: "3D Collectibles & Models",
-    slug: "models",
-    shortDescription: "Gaming masks, Marvel figures, and highly detailed display models.",
-    description: "High-precision collectible statues, articulated figures, and wearable accessories printed with fine layer height.",
-    itemCount: "10+ Models",
-    tagline: "Fine detail precision collectibles",
-    accentColor: "#D97706",
-    image_url: "/images/products/ironman-helmet-hero.jpeg",
-    order: 4,
-    status: "active",
-  },
-  {
-    name: "Planters & Desk Accessories",
-    slug: "planters-accessories",
-    shortDescription: "Faceted geometric planters and functional artisanal desk accessories.",
-    description: "Playful yet refined geometric planters, pen holders, and functional desk companions manufactured with eco-conscious 3D materials.",
-    itemCount: "6+ Accessories",
-    tagline: "Functional botanical and workspace aesthetics",
-    accentColor: "#D97706",
-    image_url: "/images/products/cat-planter-hero.jpeg",
-    order: 5,
-    status: "active",
-  },
-  {
-    name: "Personalized Name Models",
-    slug: "personalized-name-models",
-    shortDescription: "Custom typography, desktop initials, and illuminated name art.",
-    description: "Bespoke 3D printed typography crafted for modern desks, bedside stands, corporate workstations, and celebratory gifts.",
-    itemCount: "Bespoke Custom",
-    tagline: "Expressive personalized typographic art",
-    accentColor: "#B45309",
-    image_url: "/images/products/name-model-hero.jpeg",
-    order: 6,
-    status: "active",
-  },
-];
-
-// Helper to auto-seed default categories
-const seedCategoriesIfEmpty = async () => {
-  try {
-    const count = await Category.countDocuments();
-    if (count === 0) {
-      console.log("🌱 Seeding default 3D categories into database...");
-      await Category.insertMany(DEFAULT_CATEGORIES);
-      console.log("✅ Seeded 6 default categories successfully.");
-    }
-  } catch (err) {
-    console.warn("Category seed warning:", err.message);
-  }
-};
-
 /**
  * 1. GET ALL ACTIVE CATEGORIES (PUBLIC)
  * GET /api/categories
  */
 exports.getAllCategories = async (req, res) => {
   try {
-    await seedCategoriesIfEmpty();
-
     const categories = await Category.find({ status: "active" }).sort({ order: 1, createdAt: 1 });
 
     // Aggregate real product counts for each category
@@ -158,8 +66,6 @@ exports.getAllCategories = async (req, res) => {
  */
 exports.getAdminCategories = async (req, res) => {
   try {
-    await seedCategoriesIfEmpty();
-
     const categories = await Category.find().sort({ order: 1, createdAt: 1 });
 
     // Count products per category

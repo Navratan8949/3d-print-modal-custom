@@ -51,25 +51,15 @@ async function fetchProduct(slug) {
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.product) return data;
+      if (data && data.product) {
+        return {
+          product: data.product,
+          related: data.relatedProducts || [],
+        };
+      }
     }
-  } catch {
-    // fallback to static products
-  }
-
-  // Master catalog fallback ensures zero 404s
-  const staticProduct = PRODUCTS.find(
-    (p) => p.slug === slug || String(p.id) === String(slug)
-  );
-
-  if (staticProduct) {
-    const related = PRODUCTS.filter(
-      (p) =>
-        p.id !== staticProduct.id &&
-        (p.categoryId === staticProduct.categoryId || p.category === staticProduct.category)
-    ).slice(0, 4);
-
-    return { product: staticProduct, related };
+  } catch (err) {
+    console.warn("API fetch failed for product:", err.message);
   }
 
   return null;

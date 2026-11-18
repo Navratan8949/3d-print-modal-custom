@@ -147,10 +147,16 @@ export default function AdminLayout({ children }) {
       icon: MessageCircle,
       description: "Custom quotes & questions",
     },
+    {
+      label: "Policies & Legal",
+      href: "/admin/policies",
+      icon: ShieldCheck,
+      description: "Edit terms, privacy & notices",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F7F4] text-stone-900 flex overflow-hidden">
+    <div className="min-h-screen bg-[#F8F7F4] text-stone-900 flex relative">
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div
@@ -160,11 +166,11 @@ export default function AdminLayout({ children }) {
       )}
 
       {/* ======================================================== */}
-      {/* VERTICAL SIDEBAR (Desktop Fixed/Collapsible, Mobile Drawer) */}
+      {/* VERTICAL SIDEBAR (Desktop Sticky/Collapsible, Mobile Drawer) */}
       {/* ======================================================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-stone-950 text-stone-200 border-r border-stone-800/80 flex flex-col justify-between transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-50 bg-stone-950 text-stone-200 border-r border-stone-800/80 flex flex-col justify-between transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:overflow-y-auto no-scrollbar lg:shrink-0 ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } ${isCollapsed ? "w-64 sm:w-72 lg:w-20" : "w-64 sm:w-72 lg:w-72"}`}
       >
         {/* Top: Brand & Logo with Hover/Click Expansion */}
@@ -465,9 +471,9 @@ export default function AdminLayout({ children }) {
       </aside>
 
       {/* ======================================================== */}
-      {/* MAIN ADMIN WORKSPACE (Full-Height Dynamic Content, Header Removed) */}
+      {/* MAIN ADMIN WORKSPACE (Full-Height Dynamic Content, Single Scroll) */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden overflow-y-auto max-h-screen relative">
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden relative">
         {/* Floating Mobile Menu Button (Header removed as requested) */}
         <button
           type="button"
