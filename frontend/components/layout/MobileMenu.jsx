@@ -62,23 +62,25 @@ export default function MobileMenu({ isOpen, onClose, topOffset = 64 }) {
                 </div>
               </div>
 
-              {isAdmin ? (
+              <div className="flex items-center gap-1.5 shrink-0">
                 <Link
-                  href="/admin"
+                  href="/profile"
                   onClick={onClose}
-                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 shrink-0 hover:bg-amber-200 transition-colors"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 transition-colors"
                 >
-                  Admin Portal ↗
+                  My Profile
                 </Link>
-              ) : (
-                <Link
-                  href="/my-orders"
-                  onClick={onClose}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 shrink-0 hover:bg-amber-100 transition-colors"
-                >
-                  My Orders
-                </Link>
-              )}
+
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={onClose}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-colors"
+                  >
+                    Admin ↗
+                  </Link>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
@@ -130,21 +132,34 @@ export default function MobileMenu({ isOpen, onClose, topOffset = 64 }) {
           {/* Authenticated Extra Options */}
           {isAuthenticated && (
             <div className="pt-2 mt-2 border-t border-stone-100 space-y-1">
-              {!isAdmin && (
-                <Link
-                  href="/my-orders"
-                  onClick={onClose}
-                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 text-xs font-semibold text-stone-800 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
-                      <Package className="w-4 h-4" />
-                    </div>
-                    <span>My Orders & Live Tracking</span>
+              {/* Universal Profile Link */}
+              <Link
+                href="/profile"
+                onClick={onClose}
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 text-xs font-semibold text-stone-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <UserIcon className="w-4 h-4" />
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
-                </Link>
-              )}
+                  <span>My Profile & Account</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
+              </Link>
+
+              <Link
+                href="/my-orders"
+                onClick={onClose}
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 text-xs font-semibold text-stone-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
+                    <Package className="w-4 h-4" />
+                  </div>
+                  <span>My Orders & Live Tracking</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
+              </Link>
 
               {isAdmin && (
                 <>

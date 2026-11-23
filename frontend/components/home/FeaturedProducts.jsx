@@ -38,7 +38,7 @@ export default function FeaturedProducts() {
   }
 
   return (
-    <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 border-t border-stone-200/60">
+    <section className="py-4 sm:py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 border-t border-stone-200/60">
       {/* Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <SectionHeading
@@ -59,14 +59,14 @@ export default function FeaturedProducts() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {loading
           ? [...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="h-80 rounded-2xl bg-stone-100 animate-pulse border border-stone-200/80"
-              />
-            ))
+            <div
+              key={i}
+              className="h-80 rounded-2xl bg-stone-100 animate-pulse border border-stone-200/80"
+            />
+          ))
           : products.map((product) => (
-              <ProductCard key={product.id || product._id} product={product} />
-            ))}
+            <ProductCard key={product.id || product._id} product={product} />
+          ))}
       </div>
 
       {/* Prominent Bottom View All in Catalog Button */}

@@ -42,6 +42,7 @@ import {
   getOrderReferencePhotos,
   filterCustomizationSpecs,
 } from "@/lib/orderImages";
+import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
 import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
 
 // Indian Courier Presets
@@ -198,6 +199,7 @@ export default function AdminOrderDetailPage({ params }) {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     fetchOrder();
@@ -345,8 +347,17 @@ export default function AdminOrderDetailPage({ params }) {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadReceipt = () => {
+    if (!order) return;
+    try {
+      setDownloadingPdf(true);
+      generateReceiptPdf(order);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Failed to generate PDF receipt. Please try again.");
+    } finally {
+      setTimeout(() => setDownloadingPdf(false), 800);
+    }
   };
 
   const getStatusBadge = (st) => {
@@ -377,12 +388,64 @@ export default function AdminOrderDetailPage({ params }) {
     { key: "delivered", label: "Delivered", icon: CheckCircle },
   ];
 
-  const getStageIndex = (st) => {
-    const idx = stages.findIndex((s) => s.key === st);
-    return idx === -1 ? 0 : idx;
+  // Precise milestone progression mapping:
+  // - pending: Received is Completed; Confirmed is Awaiting Review.
+  // - confirmed: Received & Confirmed are Completed; Processing is In Queue.
+  // - in_production: Received & Confirmed are Completed; Processing is 3D Printing.
+  // - shipped: Received, Confirmed & Processing are Completed; Shipped is In Transit.
+  // - delivered: ALL 5 stages are Completed.
+  const getStageMeta = (stageIndex, currentStatus) => {
+    if (currentStatus === "cancelled") {
+      if (stageIndex === 0) return { state: "done", text: "Completed" };
+      return { state: "cancelled", text: "Cancelled" };
+    }
+
+    if (currentStatus === "delivered") {
+      return { state: "done", text: "Completed" };
+    }
+
+    if (currentStatus === "shipped") {
+      if (stageIndex < 3) return { state: "done", text: "Completed" };
+      if (stageIndex === 3) return { state: "current", text: "In Transit" };
+      return { state: "pending", text: "Upcoming" };
+    }
+
+    if (currentStatus === "in_production") {
+      if (stageIndex < 2) return { state: "done", text: "Completed" };
+      if (stageIndex === 2) return { state: "current", text: "3D Printing" };
+      return { state: "pending", text: "Upcoming" };
+    }
+
+    if (currentStatus === "confirmed") {
+      if (stageIndex < 2) return { state: "done", text: "Completed" };
+      if (stageIndex === 2) return { state: "current", text: "In Queue" };
+      return { state: "pending", text: "Upcoming" };
+    }
+
+    // Default: "pending"
+    if (stageIndex === 0) return { state: "done", text: "Completed" };
+    if (stageIndex === 1) return { state: "current", text: "Awaiting Review" };
+    return { state: "pending", text: "Upcoming" };
   };
 
-  const currentStageIndex = getStageIndex(status);
+  const getProgressPercent = (currentStatus) => {
+    switch (currentStatus) {
+      case "pending":
+        return 0;
+      case "confirmed":
+        return 25;
+      case "in_production":
+        return 50;
+      case "shipped":
+        return 75;
+      case "delivered":
+        return 100;
+      case "cancelled":
+        return 0;
+      default:
+        return 0;
+    }
+  };
 
   if (loading) {
     return (
@@ -477,12 +540,20 @@ export default function AdminOrderDetailPage({ params }) {
 
           <button
             type="button"
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition-colors"
+            onClick={handleDownloadReceipt}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+            title="Download Tax Invoice & Order Receipt (PDF)"
           >
-            <Printer className="w-4 h-4 text-stone-500" />
-            <span className="hidden sm:inline">Print Receipt / Slip</span>
-            <span className="sm:hidden">Print</span>
+            {downloadingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+            ) : (
+              <Download className="w-4 h-4 text-amber-400" />
+            )}
+            <span className="hidden sm:inline">
+              {downloadingPdf ? "Generating PDF..." : "Download Receipt (PDF)"}
+            </span>
+            <span className="sm:hidden">PDF Receipt</span>
           </button>
 
           <button
@@ -628,58 +699,115 @@ export default function AdminOrderDetailPage({ params }) {
         </div>
       </div>
 
-      {/* Visual Stepper Timeline */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-            Order Fulfillment & Logistics Stage
-          </span>
+      {/* Visual Stepper Timeline - Ultra-Premium Studio Tracker */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-sm space-y-6 relative overflow-hidden">
+        {/* Subtle Luxury Ambient Background Glow */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100 relative z-10">
+          <div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  status === "delivered" ? "bg-emerald-500" : "bg-amber-500 animate-ping"
+                }`}
+              />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-stone-500">
+                Order Fulfillment & Logistics Pipeline
+              </span>
+            </div>
+            <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 mt-0.5">
+              Live Additive Fabrication Stage
+            </h2>
+          </div>
           <div>{getStatusBadge(status)}</div>
         </div>
 
-        <div className="relative pt-2">
-          {/* Progress Bar Line */}
-          <div className="absolute top-7 left-6 right-6 h-1 bg-stone-200 rounded-full hidden sm:block">
+        {/* Stepper with Connected Rail */}
+        <div className="relative py-3 sm:py-5">
+          {/* Base Track Line */}
+          <div className="absolute top-8 sm:top-10 left-[10%] right-[10%] h-1 sm:h-1.5 bg-stone-100 rounded-full border border-stone-200/50 z-0">
+            {/* Active Filled Track Line */}
             <div
-              className="h-full bg-amber-500 rounded-full transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-700 ease-out ${
+                status === "delivered"
+                  ? "bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 shadow-xs shadow-emerald-500/30"
+                  : "bg-linear-to-r from-emerald-500 via-amber-500 to-amber-500 shadow-xs shadow-amber-500/30"
+              }`}
               style={{
-                width: `${(currentStageIndex / (stages.length - 1)) * 100}%`,
+                width: `${getProgressPercent(status)}%`,
               }}
             />
           </div>
 
-          {/* Steps */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 relative z-10">
+          {/* 5 Milestone Nodes */}
+          <div className="flex items-start justify-between relative z-10">
             {stages.map((stage, idx) => {
               const Icon = stage.icon;
-              const isPast = idx < currentStageIndex;
-              const isCurrent = idx === currentStageIndex;
+              const meta = getStageMeta(idx, status);
+              const isDone = meta.state === "done";
+              const isCurrent = meta.state === "current";
+              const isCancelled = meta.state === "cancelled";
 
               return (
                 <div
                   key={stage.key}
-                  className={`flex flex-col items-center text-center p-3 rounded-2xl border transition-all ${
-                    isCurrent
-                      ? "bg-amber-500/10 border-amber-500 text-amber-900 font-bold shadow-2xs"
-                      : isPast
-                      ? "bg-emerald-50/60 border-emerald-300 text-emerald-800 font-semibold"
-                      : "bg-stone-50 border-stone-200/80 text-stone-400"
-                  }`}
+                  className="w-1/5 flex flex-col items-center text-center px-0.5 sm:px-2 group"
                 >
+                  {/* Station Node */}
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 transition-colors ${
+                    className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl sm:rounded-3xl flex items-center justify-center transition-all duration-300 relative ${
                       isCurrent
-                        ? "bg-amber-500 text-white shadow-md shadow-amber-500/30"
-                        : isPast
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-200 text-stone-500"
+                        ? "bg-linear-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/35 ring-4 ring-amber-100 sm:scale-105"
+                        : isDone
+                        ? "bg-linear-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-600/25 ring-4 ring-white"
+                        : isCancelled
+                        ? "bg-rose-100 text-rose-500 ring-4 ring-white"
+                        : "bg-white border-2 border-stone-200 text-stone-400 ring-4 ring-white shadow-2xs"
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110" />
+
+                    {/* Floating Done Badge */}
+                    {isDone && (
+                      <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white text-emerald-700 flex items-center justify-center shadow-xs border border-emerald-100 text-[9px] font-extrabold">
+                        ✓
+                      </span>
+                    )}
+
+                    {/* Pulsing Active Indicator */}
+                    {isCurrent && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-300 border-2 border-white animate-ping" />
+                    )}
                   </div>
-                  <span className="text-xs">{stage.label}</span>
-                  <span className="text-[10px] opacity-70 mt-0.5">
-                    {isCurrent ? "Active Stage" : isPast ? "Completed" : "Upcoming"}
+
+                  {/* Stage Label */}
+                  <span
+                    className={`text-[11px] sm:text-xs mt-2.5 transition-colors leading-tight ${
+                      isCurrent
+                        ? "text-stone-950 font-bold"
+                        : isDone
+                        ? "text-stone-900 font-bold"
+                        : "text-stone-400 font-medium"
+                    }`}
+                  >
+                    {stage.label}
+                  </span>
+
+                  {/* Status Micro-Pill */}
+                  <span
+                    className={`text-[9px] sm:text-[10px] mt-1 px-2 py-0.5 rounded-full font-semibold transition-all ${
+                      isCurrent
+                        ? "bg-amber-100 text-amber-900 border border-amber-300/80 shadow-2xs animate-pulse"
+                        : isDone
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200/70"
+                        : isCancelled
+                        ? "bg-rose-50 text-rose-600"
+                        : "bg-stone-100 text-stone-400"
+                    }`}
+                  >
+                    {meta.text}
                   </span>
                 </div>
               );

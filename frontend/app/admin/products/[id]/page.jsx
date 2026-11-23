@@ -154,7 +154,10 @@ export default function AdminProductDetailPage({ params }) {
       } else {
         formData.append("tags", JSON.stringify([]));
       }
-      formData.append("existingImages", JSON.stringify(product.images || []));
+      const cleanExisting = (product.images || [])
+        .map((item) => (typeof item === "string" ? item.trim() : (item?.url || item?.src || item?.image_url || "")))
+        .filter((str) => typeof str === "string" && str.trim().length > 0 && str !== "{}" && str !== "[object Object]");
+      formData.append("existingImages", JSON.stringify(cleanExisting));
 
       if (newImageFiles.length > 0) {
         for (let i = 0; i < newImageFiles.length; i++) {
@@ -162,7 +165,8 @@ export default function AdminProductDetailPage({ params }) {
         }
       }
 
-      const res = await productsAPI.update(product._id, formData);
+      const targetId = product._id || product.id;
+      const res = await productsAPI.update(targetId, formData);
       if (res && res.product) {
         setProduct(res.product);
         setNewImageFiles([]);
@@ -185,7 +189,8 @@ export default function AdminProductDetailPage({ params }) {
     if (!confirm("Are you sure you want to delete this photo?")) return;
     setDeletingImage(imgUrl);
     try {
-      const res = await productsAPI.deleteImage(product._id, imgUrl);
+      const targetId = product._id || product.id;
+      const res = await productsAPI.deleteImage(targetId, imgUrl);
       if (res && res.product) {
         setProduct(res.product);
         setSuccessMsg("Photo deleted successfully!");
@@ -201,7 +206,8 @@ export default function AdminProductDetailPage({ params }) {
   const handleSetPrimaryImage = async (imgUrl) => {
     setSettingPrimary(imgUrl);
     try {
-      const res = await productsAPI.setPrimaryImage(product._id, imgUrl);
+      const targetId = product._id || product.id;
+      const res = await productsAPI.setPrimaryImage(targetId, imgUrl);
       if (res && res.product) {
         setProduct(res.product);
         setSuccessMsg("Primary photo updated!");
@@ -281,10 +287,13 @@ export default function AdminProductDetailPage({ params }) {
     );
   }
 
-  const allImages = [
+  const rawAllImages = [
     ...(product.images || []),
     ...(product.image_url ? [product.image_url] : []),
   ].filter((v, i, a) => a.indexOf(v) === i && v);
+  const allImages = rawAllImages.length > 1
+    ? rawAllImages.filter((img) => !img.includes("placeholder"))
+    : rawAllImages;
 
   return (
     <div className="space-y-6">
@@ -401,11 +410,12 @@ export default function AdminProductDetailPage({ params }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-stone-700">Price (₹) *</label>
+                <label className="text-xs font-semibold text-stone-700">Selling Price (₹) *</label>
                 <input
                   type="number"
                   required
-                  min="0"
+                  min="1"
+                  placeholder="e.g. 1499"
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600 font-mono font-semibold"
@@ -413,10 +423,25 @@ export default function AdminProductDetailPage({ params }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-stone-700">Original Price (₹ MRP)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Original Price (₹ MRP)</label>
+                  {Number(form.originalPrice) > 0 &&
+                    Number(form.price) > 0 &&
+                    Number(form.originalPrice) > Number(form.price) && (
+                      <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {Math.round(
+                          ((Number(form.originalPrice) - Number(form.price)) /
+                            Number(form.originalPrice)) *
+                          100
+                        )}
+                        % OFF
+                      </span>
+                    )}
+                </div>
                 <input
                   type="number"
                   min="0"
+                  placeholder="e.g. 2000"
                   value={form.originalPrice}
                   onChange={(e) => setForm({ ...form, originalPrice: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600 font-mono"
@@ -523,37 +548,50 @@ export default function AdminProductDetailPage({ params }) {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-6 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-800">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 cursor-pointer transition-colors shadow-2xs">
                 <input
                   type="checkbox"
                   checked={form.is_featured}
                   onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                  className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
-                <span>Feature on Homepage Trends</span>
+                <div className="min-w-0">
+                  <span className="font-bold text-stone-900 text-xs block">Featured on Home</span>
+                  <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                    Displays on Homepage Trending & Best-Sellers section
+                  </span>
+                </div>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-800">
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 cursor-pointer transition-colors shadow-2xs">
                 <input
                   type="checkbox"
                   checked={form.showInSlider}
                   onChange={(e) => setForm({ ...form, showInSlider: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                  className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
-                <span className="font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                  Show in Slide (Hero 3D Slider)
-                </span>
+                <div className="min-w-0">
+                  <span className="font-bold text-stone-900 text-xs block">In Banner Slider</span>
+                  <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                    Appears in Top Hero 3D Card Stack banner slider
+                  </span>
+                </div>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-800">
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 cursor-pointer transition-colors shadow-2xs">
                 <input
                   type="checkbox"
                   checked={form.isCustomizable}
                   onChange={(e) => setForm({ ...form, isCustomizable: e.target.checked })}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                  className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
-                <span>Enable Customization (Text, Photo upload)</span>
+                <div className="min-w-0">
+                  <span className="font-bold text-stone-900 text-xs block">3D Customization</span>
+                  <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                    Allows user photo upload (up to 5 photos) for 3D modeling
+                  </span>
+                </div>
               </label>
             </div>
           </div>
@@ -563,9 +601,21 @@ export default function AdminProductDetailPage({ params }) {
         <div className="lg:col-span-4 space-y-6">
           {/* Images Gallery Card */}
           <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-4">
-            <h3 className="font-serif font-bold text-sm text-stone-900 pb-3 border-b border-stone-100">
-              Product Images Gallery
+            <h3 className="font-serif font-bold text-sm text-stone-900 pb-3 border-b border-stone-100 flex items-center justify-between">
+              <span>Product Images Gallery</span>
+              <span className="text-[10px] font-normal text-stone-400">Max 8 photos • 15MB</span>
             </h3>
+
+            {/* Image Guidelines Note */}
+            <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed space-y-1">
+              <div className="font-bold flex items-center gap-1 text-amber-950">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Upload Guidelines:</span>
+              </div>
+              <p>• <strong>Aspect Ratio:</strong> 1:1 (Square, 1000×1000px) or 4:3 (1200×900px).</p>
+              <p>• <strong>Limits:</strong> Up to 8 photos, max 15MB each (JPG, PNG, WebP).</p>
+              <p className="text-[10px] text-amber-800">• Unreferenced server images are automatically pruned when updated/deleted.</p>
+            </div>
 
             {/* Current Images */}
             {allImages.length === 0 ? (

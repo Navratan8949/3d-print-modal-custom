@@ -1,5 +1,6 @@
 const Category = require("../models/Category");
 const Product = require("../models/Product");
+const { deleteUnusedServerFile } = require("../utils/fileCleanup");
 
 /**
  * 1. GET ALL ACTIVE CATEGORIES (PUBLIC)
@@ -38,7 +39,7 @@ exports.getAllCategories = async (req, res) => {
         description: cat.description,
         tagline: cat.tagline,
         accentColor: cat.accentColor,
-        image_url: cat.image_url || (stat && stat.sampleImage) || "/images/products/fullbody-figurine-hero.jpeg",
+        image_url: cat.image_url || (stat && stat.sampleImage) || "",
         itemCount: `${count} Item${count === 1 ? "" : "s"}`,
         actualProductCount: count,
         order: cat.order,
@@ -151,6 +152,13 @@ exports.createCategory = async (req, res) => {
     const highestOrder = await Category.findOne().sort({ order: -1 }).select("order");
     const nextOrder = order !== undefined ? Number(order) : (highestOrder?.order || 0) + 1;
 
+    let finalImageUrl = "";
+    if (req.file) {
+      finalImageUrl = `/uploads/categories/${req.file.filename}`;
+    } else if (image_url && typeof image_url === "string" && image_url.trim()) {
+      finalImageUrl = image_url.trim();
+    }
+
     const newCategory = new Category({
       name: name.trim(),
       slug: generatedSlug,
@@ -158,7 +166,7 @@ exports.createCategory = async (req, res) => {
       description: (description || "").trim(),
       tagline: (tagline || "").trim(),
       accentColor: (accentColor || "#D97706").trim(),
-      image_url: (image_url || "/images/products/fullbody-figurine-hero.jpeg").trim(),
+      image_url: finalImageUrl,
       order: nextOrder,
       status: status || "active",
       itemCount: "0+ Creations",
@@ -210,6 +218,7 @@ exports.updateCategory = async (req, res) => {
 
     const prevSlug = category.slug;
     const prevName = category.name;
+    const oldImageUrl = category.image_url;
 
     if (name) category.name = name.trim();
     if (slug) {
@@ -223,7 +232,13 @@ exports.updateCategory = async (req, res) => {
     if (description !== undefined) category.description = description.trim();
     if (tagline !== undefined) category.tagline = tagline.trim();
     if (accentColor !== undefined) category.accentColor = accentColor.trim();
-    if (image_url !== undefined) category.image_url = image_url.trim();
+
+    if (req.file) {
+      category.image_url = `/uploads/categories/${req.file.filename}`;
+    } else if (image_url !== undefined && typeof image_url === "string" && image_url.trim()) {
+      category.image_url = image_url.trim();
+    }
+
     if (order !== undefined) category.order = Number(order);
     if (status !== undefined) category.status = status;
 
@@ -234,6 +249,13 @@ exports.updateCategory = async (req, res) => {
       await Product.updateMany(
         { categoryId: prevSlug },
         { categoryId: category.slug, category: category.name }
+      );
+    }
+
+    // Clean up old server image if it was replaced and is no longer referenced
+    if (oldImageUrl && oldImageUrl !== category.image_url) {
+      deleteUnusedServerFile(oldImageUrl).catch((e) =>
+        console.warn("Cleanup old category image error:", e.message)
       );
     }
 
@@ -284,7 +306,15 @@ exports.deleteCategory = async (req, res) => {
       });
     }
 
+    const oldImageUrl = category.image_url;
     await Category.findByIdAndDelete(id);
+
+    // Clean up category image file from server if no longer used
+    if (oldImageUrl) {
+      deleteUnusedServerFile(oldImageUrl).catch((e) =>
+        console.warn("Cleanup deleted category image error:", e.message)
+      );
+    }
 
     return res.status(200).json({
       success: true,

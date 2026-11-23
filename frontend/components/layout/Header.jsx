@@ -194,8 +194,27 @@ export default function Header() {
                           )}
                         </div>
 
-                        {isAdmin ? (
-                          <>
+                        {/* Profile Link (Universal) */}
+                        <Link
+                          href="/profile"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-stone-800 hover:bg-stone-50 hover:text-amber-700 transition-colors"
+                        >
+                          <UserIcon className="w-4 h-4 text-amber-600" />
+                          <span>My Profile</span>
+                        </Link>
+
+                        <Link
+                          href="/my-orders"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2 text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors"
+                        >
+                          <Package className="w-4 h-4 text-stone-500" />
+                          <span>My Orders & Tracking</span>
+                        </Link>
+
+                        {isAdmin && (
+                          <div className="pt-1 mt-1 border-t border-stone-100">
                             <Link
                               href="/admin"
                               onClick={() => setIsUserMenuOpen(false)}
@@ -222,16 +241,7 @@ export default function Header() {
                               <Sparkles className="w-4 h-4 text-stone-500" />
                               <span>Products Catalog</span>
                             </Link>
-                          </>
-                        ) : (
-                          <Link
-                            href="/my-orders"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors"
-                          >
-                            <Package className="w-4 h-4 text-stone-500" />
-                            <span>My Orders & Tracking</span>
-                          </Link>
+                          </div>
                         )}
 
                         <button

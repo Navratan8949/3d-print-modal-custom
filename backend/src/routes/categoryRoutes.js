@@ -8,6 +8,7 @@ const {
 } = require("../controllers/categoryController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const { categoryUpload } = require("../utils/multer");
 
 const router = express.Router();
 
@@ -16,8 +17,20 @@ router.get("/", getAllCategories);
 
 // Admin protected routes
 router.get("/admin/all", authMiddleware, roleMiddleware("admin", "super_admin"), getAdminCategories);
-router.post("/", authMiddleware, roleMiddleware("admin", "super_admin"), createCategory);
-router.put("/:id", authMiddleware, roleMiddleware("admin", "super_admin"), updateCategory);
+router.post(
+  "/",
+  authMiddleware,
+  roleMiddleware("admin", "super_admin"),
+  categoryUpload.single("image"),
+  createCategory
+);
+router.put(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("admin", "super_admin"),
+  categoryUpload.single("image"),
+  updateCategory
+);
 router.delete("/:id", authMiddleware, roleMiddleware("admin", "super_admin"), deleteCategory);
 
 module.exports = router;

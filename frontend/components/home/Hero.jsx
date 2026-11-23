@@ -76,7 +76,7 @@ export default function Hero({ initialProducts = [] }) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="relative overflow-hidden py-6 border-b border-stone-200/60"
+      className="relative overflow-hidden pt-6 pb-4 sm:pt-8 sm:pb-5 border-b border-stone-200/60"
       style={{
         background:
           "radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 45%), radial-gradient(circle at 10% 80%, rgba(249, 115, 22, 0.05) 0%, transparent 40%), linear-gradient(180deg, #FAF8F5 0%, #F5EFE6 55%, #FAF8F5 100%)",

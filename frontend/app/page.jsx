@@ -88,7 +88,7 @@ export default async function HomePage() {
   const heroProducts = await getHeroProducts();
 
   return (
-    <div className="flex flex-col space-y-12 sm:space-y-16">
+    <div className="flex flex-col space-y-4 sm:space-y-6">
       {/* Hero Section with Interactive Card Stack Animation */}
       <Hero initialProducts={heroProducts} />
 

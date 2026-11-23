@@ -27,7 +27,7 @@ router.post(
   "/",
   authMiddleware,
   roleMiddleware("admin", "super_admin"),
-  productUpload.array("images", 8),
+  productUpload.array("images", 15),
   createProduct
 );
 
@@ -35,7 +35,7 @@ router.put(
   "/:id",
   authMiddleware,
   roleMiddleware("admin", "super_admin"),
-  productUpload.array("images", 8),
+  productUpload.array("images", 15),
   updateProduct
 );
 

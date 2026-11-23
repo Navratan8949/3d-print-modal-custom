@@ -21,7 +21,7 @@ const optionalAuth = (req, res, next) => {
   if (authHeader && authHeader.startsWith("Bearer ")) {
     try {
       const token = authHeader.split(" ")[1];
-      const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+      const secret = process.env.JWT_ACCESS_SECRET;
       const decoded = jwt.verify(token, secret);
       req.user = decoded;
     } catch {
