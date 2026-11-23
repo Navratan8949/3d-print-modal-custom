@@ -14,6 +14,7 @@ import {
   AlertCircle,
   ShoppingBag,
   Camera,
+  User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ordersAPI } from "@/lib/api";
@@ -136,11 +137,13 @@ export default function MyOrdersPage() {
 
   return (
     <div className="py-10 sm:py-16 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-      <SectionHeading
-        eyebrow="My Account"
-        title="Your 3D Printing Orders"
-        description="Track fabrication stages, view customization specifications, and message our artisans on WhatsApp."
-      />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <SectionHeading
+          eyebrow="My Profile & Address"
+          title="Your 3D Printing Orders"
+          description="Track fabrication stages, view customization specifications, and message our artisans on WhatsApp."
+        />
+      </div>
 
       {error && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">

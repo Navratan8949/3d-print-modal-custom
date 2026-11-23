@@ -40,7 +40,7 @@ const categorySchema = new mongoose.Schema(
     },
     image_url: {
       type: String,
-      default: "/images/products/fullbody-figurine-hero.jpeg",
+      default: "",
     },
     status: {
       type: String,

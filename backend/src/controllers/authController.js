@@ -8,10 +8,8 @@ const {
   sendInBackground,
 } = require("../utils/sendMail");
 
-const getAccessSecret = () =>
-  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
-const getRefreshSecret = () =>
-  process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+const getAccessSecret = () => process.env.JWT_ACCESS_SECRET;
+const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET;
 
 const generateAccessToken = (user) => {
   const secret = getAccessSecret();
@@ -131,7 +129,7 @@ exports.register = async (req, res) => {
     const adminEmail = (process.env.ADMIN_EMAIL || "prime3dprintinglab@gmail.com").toLowerCase().trim();
     if (cleanEmail === adminEmail) {
       userRole = "admin";
-    } else if (role === "admin" && req.body.adminSecretKey === process.env.JWT_SECRET) {
+    } else if (role === "admin" && req.body.adminSecretKey === process.env.JWT_ACCESS_SECRET) {
       userRole = "admin";
     }
 

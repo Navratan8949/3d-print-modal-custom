@@ -35,6 +35,7 @@ import {
   filterCustomizationSpecs,
   isPhotoEditingAllowed,
 } from "@/lib/orderImages";
+import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
 import OrderReferenceGallery from "@/components/orders/OrderReferenceGallery";
 import CustomerPhotoUpdateModal from "@/components/orders/CustomerPhotoUpdateModal";
 
@@ -49,6 +50,21 @@ export default function CustomerOrderDetailPage({ params }) {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoFeedback, setPhotoFeedback] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const handleDownloadReceipt = () => {
+    if (!order) return;
+    try {
+      setDownloadingPdf(true);
+      generateReceiptPdf(order);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Failed to download PDF receipt. Please try again.");
+    } finally {
+      setTimeout(() => setDownloadingPdf(false), 800);
+    }
+  };
 
   const handlePayNow = async () => {
     if (!order) return;
@@ -193,12 +209,111 @@ export default function CustomerOrderDetailPage({ params }) {
     { key: "delivered", label: "Delivered", icon: CheckCircle },
   ];
 
-  const getStageIndex = (st) => {
-    const idx = stages.findIndex((s) => s.key === st);
-    return idx === -1 ? 0 : idx;
+  // Precise milestone progression mapping:
+  // - pending: Received is Done; Confirmed is In Progress (under review).
+  // - confirmed: Received & Confirmed are Done; Processing is In Progress (in print queue).
+  // - in_production: Received & Confirmed are Done; Processing is In Progress (active 3D printing).
+  // - shipped: Received, Confirmed & Processing are Done; Dispatched is In Transit.
+  // - delivered: ALL 5 stages are Done.
+  const getStageMeta = (stageIndex, currentStatus) => {
+    if (currentStatus === "cancelled") {
+      if (stageIndex === 0) return { state: "done", text: "Done" };
+      return { state: "cancelled", text: "Cancelled" };
+    }
+
+    if (currentStatus === "delivered") {
+      return { state: "done", text: "Done" };
+    }
+
+    if (currentStatus === "shipped") {
+      if (stageIndex < 3) return { state: "done", text: "Done" };
+      if (stageIndex === 3) return { state: "current", text: "In Transit" };
+      return { state: "pending", text: "Pending" };
+    }
+
+    if (currentStatus === "in_production") {
+      if (stageIndex < 2) return { state: "done", text: "Done" };
+      if (stageIndex === 2) return { state: "current", text: "In Progress" };
+      return { state: "pending", text: "Pending" };
+    }
+
+    if (currentStatus === "confirmed") {
+      if (stageIndex < 2) return { state: "done", text: "Done" };
+      if (stageIndex === 2) return { state: "current", text: "In Progress" };
+      return { state: "pending", text: "Pending" };
+    }
+
+    // Default: "pending"
+    if (stageIndex === 0) return { state: "done", text: "Done" };
+    if (stageIndex === 1) return { state: "current", text: "In Progress" };
+    return { state: "pending", text: "Pending" };
   };
 
-  const currentStageIndex = order ? getStageIndex(order.status) : 0;
+  const getProgressPercent = (currentStatus) => {
+    switch (currentStatus) {
+      case "pending":
+        return 0;
+      case "confirmed":
+        return 25;
+      case "in_production":
+        return 50;
+      case "shipped":
+        return 75;
+      case "delivered":
+        return 100;
+      case "cancelled":
+        return 0;
+      default:
+        return 0;
+    }
+  };
+
+  const getStageInsight = (st) => {
+    switch (st) {
+      case "delivered":
+        return {
+          title: "Order Fulfilled & Delivered Successfully 🎉",
+          desc: "Your bespoke 3D creation has arrived safely. Thank you for trusting Prime 3D Lab with your keepsake!",
+          badge: "bg-emerald-50 text-emerald-900 border-emerald-200/80",
+          iconColor: "text-emerald-600 bg-emerald-100",
+        };
+      case "shipped":
+        return {
+          title: "Dispatched & In Transit with Courier 🚚",
+          desc: "Your model has passed quality inspection and is safely packaged with 5-layer shockproof cushioning. Live courier tracking details are active below.",
+          badge: "bg-indigo-50 text-indigo-950 border-indigo-200/80",
+          iconColor: "text-indigo-600 bg-indigo-100",
+        };
+      case "in_production":
+        return {
+          title: "Precision 3D Printing & Additive Fabrication Active ⚡",
+          desc: "High-resolution SLA/DLP printing is actively running layer-by-layer at 0.05mm precision, followed by ultrasonic alcohol curing and hand finishing.",
+          badge: "bg-amber-50 text-amber-950 border-amber-200/80",
+          iconColor: "text-amber-600 bg-amber-100",
+        };
+      case "confirmed":
+        return {
+          title: "Order Confirmed & Fabrication Queued ✓",
+          desc: "Reference images and 3D geometry parameters have been verified. Your job has been scheduled in our printing laboratory queue.",
+          badge: "bg-emerald-50 text-emerald-900 border-emerald-200/80",
+          iconColor: "text-emerald-600 bg-emerald-100",
+        };
+      case "cancelled":
+        return {
+          title: "Order Cancelled",
+          desc: "This order has been cancelled. For refunds or re-ordering support, feel free to chat with our WhatsApp support team.",
+          badge: "bg-rose-50 text-rose-950 border-rose-200/80",
+          iconColor: "text-rose-600 bg-rose-100",
+        };
+      default:
+        return {
+          title: "Order Received & Awaiting Verification ⏳",
+          desc: "We have received your custom order request. Our digital sculptors are reviewing your uploaded reference photos and fabrication specifications.",
+          badge: "bg-stone-50 text-stone-900 border-stone-200/80",
+          iconColor: "text-stone-600 bg-stone-200",
+        };
+    }
+  };
 
   if (loading) {
     return (
@@ -260,11 +375,18 @@ export default function CustomerOrderDetailPage({ params }) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            type="button"
+            onClick={handleDownloadReceipt}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-60"
+            title="Download Tax Invoice & Order Receipt (PDF)"
           >
-            <Printer className="w-4 h-4 text-stone-500" />
-            <span>Print Receipt</span>
+            {downloadingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+            ) : (
+              <Download className="w-4 h-4 text-amber-400" />
+            )}
+            <span>{downloadingPdf ? "Generating PDF..." : "Download Receipt (PDF)"}</span>
           </button>
 
           <a
@@ -274,7 +396,8 @@ export default function CustomerOrderDetailPage({ params }) {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors"
           >
             <MessageCircle className="w-3.5 h-3.5 fill-current" />
-            <span>WhatsApp Support</span>
+            <span className="hidden sm:inline">WhatsApp Support</span>
+            <span className="sm:hidden">Help</span>
           </a>
         </div>
       </div>
@@ -306,52 +429,141 @@ export default function CustomerOrderDetailPage({ params }) {
         </div>
       )}
 
-      {/* Visual Stepper Timeline */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-            Fabrication & Delivery Status
-          </span>
+      {/* Visual Stepper Timeline - Ultra-Premium Luxury Studio Tracker */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-sm space-y-6 relative overflow-hidden">
+        {/* Subtle Luxury Ambient Background Glow */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100 relative z-10">
+          <div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  order.status === "delivered" ? "bg-emerald-500" : "bg-amber-500 animate-ping"
+                }`}
+              />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-stone-500">
+                Studio Fabrication & Logistics
+              </span>
+            </div>
+            <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 mt-0.5">
+              Live Order Fulfillment Pipeline
+            </h2>
+          </div>
           <div>{getStatusBadge(order.status)}</div>
         </div>
 
-        {/* Stepper */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
-          {stages.map((stage, idx) => {
-            const Icon = stage.icon;
-            const isPast = idx < currentStageIndex;
-            const isCurrent = idx === currentStageIndex;
+        {/* Stepper with Connected Rail */}
+        <div className="relative py-3 sm:py-5">
+          {/* Base Track Line */}
+          <div className="absolute top-8 sm:top-10 left-[10%] right-[10%] h-1 sm:h-1.5 bg-stone-100 rounded-full border border-stone-200/50 z-0">
+            {/* Active Filled Track Line */}
+            <div
+              className={`h-full rounded-full transition-all duration-700 ease-out ${
+                order.status === "delivered"
+                  ? "bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 shadow-xs shadow-emerald-500/30"
+                  : "bg-linear-to-r from-emerald-500 via-amber-500 to-amber-500 shadow-xs shadow-amber-500/30"
+              }`}
+              style={{
+                width: `${getProgressPercent(order.status)}%`,
+              }}
+            />
+          </div>
 
-            return (
-              <div
-                key={stage.key}
-                className={`flex flex-col items-center text-center p-3 rounded-2xl border transition-all ${
-                  isCurrent
-                    ? "bg-amber-500/10 border-amber-500 text-amber-900 font-bold shadow-2xs"
-                    : isPast
-                    ? "bg-emerald-50/60 border-emerald-300 text-emerald-800 font-semibold"
-                    : "bg-stone-50 border-stone-200/80 text-stone-400"
-                }`}
-              >
+          {/* 5 Milestone Nodes */}
+          <div className="flex items-start justify-between relative z-10">
+            {stages.map((stage, idx) => {
+              const Icon = stage.icon;
+              const meta = getStageMeta(idx, order.status);
+              const isDone = meta.state === "done";
+              const isCurrent = meta.state === "current";
+              const isCancelled = meta.state === "cancelled";
+
+              return (
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 transition-colors ${
-                    isCurrent
-                      ? "bg-amber-500 text-white shadow-md shadow-amber-500/30"
-                      : isPast
-                      ? "bg-emerald-600 text-white"
-                      : "bg-stone-200 text-stone-500"
-                  }`}
+                  key={stage.key}
+                  className="w-1/5 flex flex-col items-center text-center px-0.5 sm:px-2 group"
                 >
-                  <Icon className="w-4 h-4" />
+                  {/* Station Node */}
+                  <div
+                    className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl sm:rounded-3xl flex items-center justify-center transition-all duration-300 relative ${
+                      isCurrent
+                        ? "bg-linear-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/35 ring-4 ring-amber-100 sm:scale-105"
+                        : isDone
+                        ? "bg-linear-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-600/25 ring-4 ring-white"
+                        : isCancelled
+                        ? "bg-rose-100 text-rose-500 ring-4 ring-white"
+                        : "bg-white border-2 border-stone-200 text-stone-400 ring-4 ring-white shadow-2xs"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110" />
+
+                    {/* Floating Done Badge */}
+                    {isDone && (
+                      <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white text-emerald-700 flex items-center justify-center shadow-xs border border-emerald-100 text-[9px] font-extrabold">
+                        ✓
+                      </span>
+                    )}
+
+                    {/* Pulsing Active Indicator */}
+                    {isCurrent && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-300 border-2 border-white animate-ping" />
+                    )}
+                  </div>
+
+                  {/* Stage Label */}
+                  <span
+                    className={`text-[11px] sm:text-xs mt-2.5 transition-colors leading-tight ${
+                      isCurrent
+                        ? "text-stone-950 font-bold"
+                        : isDone
+                        ? "text-stone-900 font-bold"
+                        : "text-stone-400 font-medium"
+                    }`}
+                  >
+                    {stage.label}
+                  </span>
+
+                  {/* Status Micro-Pill */}
+                  <span
+                    className={`text-[9px] sm:text-[10px] mt-1 px-2 py-0.5 rounded-full font-semibold transition-all ${
+                      isCurrent
+                        ? "bg-amber-100 text-amber-900 border border-amber-300/80 shadow-2xs animate-pulse"
+                        : isDone
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200/70"
+                        : isCancelled
+                        ? "bg-rose-50 text-rose-600"
+                        : "bg-stone-100 text-stone-400"
+                    }`}
+                  >
+                    {meta.text}
+                  </span>
                 </div>
-                <span className="text-xs">{stage.label}</span>
-                <span className="text-[10px] opacity-70 mt-0.5">
-                  {isCurrent ? "In Progress" : isPast ? "Done" : "Pending"}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
+
+        {/* Current Stage Intelligence / Insight Card */}
+        {(() => {
+          const insight = getStageInsight(order.status);
+          return (
+            <div
+              className={`p-4 rounded-2xl border text-xs sm:text-sm flex items-start gap-3.5 transition-all ${insight.badge}`}
+            >
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-2xs ${insight.iconColor}`}
+              >
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-bold">{insight.title}</h4>
+                <p className="text-xs opacity-90 leading-relaxed">{insight.desc}</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Courier Tracking Box (if active) */}
         {order.tracking && order.tracking.trackingNumber && (
@@ -586,6 +798,11 @@ export default function CustomerOrderDetailPage({ params }) {
         order={order}
         onPhotosUpdated={(updatedOrder) => {
           setOrder(updatedOrder);
+          setPhotoFeedback({
+            type: "success",
+            text: "Reference photos updated successfully! Live in your 3D fabrication specs.",
+          });
+          setTimeout(() => setPhotoFeedback(null), 5000);
         }}
       />
     </div>

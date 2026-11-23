@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Layers,
@@ -23,8 +23,11 @@ import {
   RefreshCw,
   Hash,
   ShoppingBag,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { categoriesAPI } from "@/lib/api";
+import { resolveProductImage } from "@/lib/imageUtils";
 
 const COLOR_PRESETS = [
   "#D97706", // Amber
@@ -48,6 +51,9 @@ export default function AdminCategoriesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null); // null = create mode
   const [submitting, setSubmitting] = useState(false);
+  const [categoryImageFile, setCategoryImageFile] = useState(null);
+  const [categoryImagePreview, setCategoryImagePreview] = useState("");
+  const categoryFileInputRef = useRef(null);
 
   // Form State
   const initialFormState = {
@@ -95,6 +101,8 @@ export default function AdminCategoriesPage() {
   // Open Create Form
   const handleOpenCreate = () => {
     setEditingCategory(null);
+    setCategoryImageFile(null);
+    setCategoryImagePreview("");
     setFormData({
       ...initialFormState,
       order: (categories.length > 0 ? Math.max(...categories.map((c) => c.order || 0)) : 0) + 1,
@@ -105,6 +113,8 @@ export default function AdminCategoriesPage() {
   // Open Edit Form
   const handleOpenEdit = (cat) => {
     setEditingCategory(cat);
+    setCategoryImageFile(null);
+    setCategoryImagePreview(cat.image_url || "");
     setFormData({
       name: cat.name || "",
       slug: cat.slug || "",
@@ -119,6 +129,22 @@ export default function AdminCategoriesPage() {
     setIsFormOpen(true);
   };
 
+  const handleCategoryFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file (JPG, PNG, WebP).");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size exceeds 10MB limit.");
+        return;
+      }
+      setCategoryImageFile(file);
+      setCategoryImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   // Submit Form (Create or Update)
   const handleSubmitForm = async (e) => {
     e.preventDefault();
@@ -128,13 +154,29 @@ export default function AdminCategoriesPage() {
     setError("");
 
     try {
+      const dataToSend = new FormData();
+      dataToSend.append("name", formData.name.trim());
+      dataToSend.append("slug", formData.slug.trim());
+      if (formData.tagline) dataToSend.append("tagline", formData.tagline.trim());
+      if (formData.shortDescription) dataToSend.append("shortDescription", formData.shortDescription.trim());
+      if (formData.description) dataToSend.append("description", formData.description.trim());
+      if (formData.accentColor) dataToSend.append("accentColor", formData.accentColor.trim());
+      dataToSend.append("order", formData.order);
+      dataToSend.append("status", formData.status || "active");
+
+      if (categoryImageFile) {
+        dataToSend.append("image", categoryImageFile);
+      } else if (formData.image_url) {
+        dataToSend.append("image_url", formData.image_url.trim());
+      }
+
       if (editingCategory) {
         // Update existing category
-        const res = await categoriesAPI.update(editingCategory._id, formData);
+        const res = await categoriesAPI.update(editingCategory._id, dataToSend);
         showToast(`Category "${res.category?.name || formData.name}" updated successfully!`);
       } else {
         // Create new category
-        const res = await categoriesAPI.create(formData);
+        const res = await categoriesAPI.create(dataToSend);
         showToast(`Category "${res.category?.name || formData.name}" created with priority #${formData.order}!`);
       }
       setIsFormOpen(false);
@@ -393,10 +435,26 @@ export default function AdminCategoriesPage() {
 
                     {/* Color Swatch */}
                     <div
-                      className="w-4 h-4 rounded-full shrink-0 shadow-xs ring-2 ring-white"
+                      className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs ring-2 ring-white"
                       style={{ backgroundColor: cat.accentColor || "#D97706" }}
                       title={`Accent Color: ${cat.accentColor || "#D97706"}`}
                     />
+
+                    {/* Category Cover Photo Thumbnail */}
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0 shadow-2xs group">
+                      {cat.image_url ? (
+                        <img
+                          src={resolveProductImage(cat.image_url)}
+                          alt={cat.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-50">
+                          <ImageIcon className="w-4 h-4 text-stone-300" />
+                          <span className="text-[8px] text-stone-400 font-semibold">No Image</span>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Category Title & Info */}
                     <div className="min-w-0">
@@ -569,15 +627,99 @@ export default function AdminCategoriesPage() {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-stone-700">Cover Image URL (Optional)</label>
+              {/* Category Cover Image Upload & Guidelines */}
+              <div className="space-y-2 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-stone-700 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Category Cover Image</span>
+                  </label>
+                  <span className="text-[10px] text-stone-500 font-medium">Max 1 Image • Up to 10MB</span>
+                </div>
+
+                {/* Live Preview Box */}
+                {(categoryImagePreview || formData.image_url) && (
+                  <div className="relative w-full h-32 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 group">
+                    <img
+                      src={categoryImagePreview || formData.image_url}
+                      alt="Category Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => categoryFileInputRef.current?.click()}
+                        className="px-3 py-1 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-100"
+                      >
+                        Change Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryImageFile(null);
+                          setCategoryImagePreview("");
+                          setFormData({ ...formData, image_url: "" });
+                        }}
+                        className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700"
+                        title="Remove Photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Button */}
                 <input
-                  type="text"
-                  placeholder="/images/products/fullbody-figurine-hero.jpeg"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
+                  ref={categoryFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleCategoryFileChange}
+                  className="hidden"
                 />
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => categoryFileInputRef.current?.click()}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4 text-amber-700" />
+                    <span>{categoryImagePreview ? "Choose Different Image" : "Upload Category Image"}</span>
+                  </button>
+                </div>
+
+                {/* Important Guidelines Note */}
+                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed space-y-1">
+                  <div className="font-bold flex items-center gap-1 text-amber-950">
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    <span>Upload Guidelines:</span>
+                  </div>
+                  <p>
+                    • <strong>Aspect Ratio:</strong> Recommended <strong>1:1</strong> (Square, 600×600px) or <strong>16:9</strong> (1200×675px) for crisp storefront display.
+                  </p>
+                  <p>
+                    • <strong>Limits:</strong> Maximum <strong>1 photo</strong> per category, up to <strong>10MB</strong> each (JPG, PNG, WebP).
+                  </p>
+                  <p className="text-[10px] text-amber-800">
+                    • When category is updated/deleted, unreferenced image files are automatically pruned from server storage.
+                  </p>
+                </div>
+
+                {/* Optional Fallback Text URL */}
+                <div className="space-y-1 pt-1">
+                  <label className="text-[10px] text-stone-500 font-medium">Or paste image URL (Optional fallback):</label>
+                  <input
+                    type="text"
+                    placeholder="https://... or /images/products/..."
+                    value={formData.image_url}
+                    onChange={(e) => {
+                      setFormData({ ...formData, image_url: e.target.value });
+                      if (!categoryImageFile) setCategoryImagePreview(e.target.value);
+                    }}
+                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-800 text-[11px] focus:outline-hidden focus:border-amber-600"
+                  />
+                </div>
               </div>
 
               {/* Accent Color Palette */}

@@ -83,6 +83,7 @@ export default function AdminProductsPage() {
   // Image Management States
   const [selectedFiles, setSelectedFiles] = useState([]); // array of File objects
   const [newFilePreviews, setNewFilePreviews] = useState([]); // array of preview objects
+  const [coverTarget, setCoverTarget] = useState({ source: "existing", index: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -190,16 +191,37 @@ export default function AdminProductsPage() {
       existingImages: [],
     });
     setSelectedFiles([]);
+    setCoverTarget({ source: "new", index: 0 });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (prod) => {
     setEditingProduct(prod);
+
+    // Collect all existing images belonging to this product
+    let rawImages = [];
+    if (prod.image_url && typeof prod.image_url === "string" && prod.image_url.trim()) {
+      rawImages.push(prod.image_url.trim());
+    }
+    if (Array.isArray(prod.images)) {
+      prod.images.forEach((img) => {
+        const str = typeof img === "string" ? img.trim() : (img?.url || img?.src || "");
+        if (str && !rawImages.includes(str)) {
+          rawImages.push(str);
+        }
+      });
+    }
+
+    // Sanitize and filter out proxy / invalid objects
+    const cleanExisting = rawImages.filter(
+      (img) => typeof img === "string" && img.length > 0 && img !== "{}" && img !== "[object Object]"
+    );
+
     setForm({
-      name: prod.name,
-      category: prod.category,
-      categoryId: prod.categoryId,
-      price: prod.price,
+      name: prod.name || "",
+      category: prod.category || "",
+      categoryId: prod.categoryId || "",
+      price: prod.price || "",
       originalPrice: prod.originalPrice || "",
       material: prod.material || "High-Density UV Resin & Eco-PLA+",
       print_time: prod.print_time || "1-2 working days",
@@ -209,12 +231,13 @@ export default function AdminProductsPage() {
       is_featured: Boolean(prod.is_featured),
       showInSlider: Boolean(prod.showInSlider),
       isCustomizable: prod.isCustomizable !== undefined ? Boolean(prod.isCustomizable) : true,
-      tags: prod.tags ? prod.tags.join(", ") : "",
+      tags: prod.tags ? (Array.isArray(prod.tags) ? prod.tags.join(", ") : prod.tags) : "",
       currentStock: prod.currentStock !== undefined ? prod.currentStock : 100,
       status: prod.status || "active",
-      existingImages: prod.images && prod.images.length > 0 ? prod.images : (prod.image_url ? [prod.image_url] : []),
+      existingImages: cleanExisting,
     });
     setSelectedFiles([]);
+    setCoverTarget({ source: cleanExisting.length > 0 ? "existing" : "new", index: 0 });
     setIsModalOpen(true);
   };
 
@@ -223,7 +246,14 @@ export default function AdminProductsPage() {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       const validImageFiles = files.filter((f) => f.type.startsWith("image/"));
-      setSelectedFiles((prev) => [...prev, ...validImageFiles]);
+      setSelectedFiles((prev) => {
+        const next = [...prev, ...validImageFiles];
+        // If no existing images present, automatically select new photo as primary cover
+        if (!form.existingImages || form.existingImages.length === 0) {
+          setCoverTarget({ source: "new", index: 0 });
+        }
+        return next;
+      });
       e.target.value = ""; // Reset input so same file can be re-selected if desired
     }
   };
@@ -235,21 +265,39 @@ export default function AdminProductsPage() {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
       const validImageFiles = files.filter((f) => f.type.startsWith("image/"));
-      setSelectedFiles((prev) => [...prev, ...validImageFiles]);
+      setSelectedFiles((prev) => {
+        const next = [...prev, ...validImageFiles];
+        if (!form.existingImages || form.existingImages.length === 0) {
+          setCoverTarget({ source: "new", index: 0 });
+        }
+        return next;
+      });
     }
   };
 
   // Remove Newly Selected File
   const handleRemoveNewFile = (index) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => {
+      const remaining = prev.filter((_, i) => i !== index);
+      if (coverTarget.source === "new" && form.existingImages?.length > 0) {
+        setCoverTarget({ source: "existing", index: 0 });
+      }
+      return remaining;
+    });
   };
 
   // Remove Existing Uploaded Image
   const handleRemoveExistingImage = (urlToRemove) => {
-    setForm((prev) => ({
-      ...prev,
-      existingImages: prev.existingImages.filter((img) => img !== urlToRemove),
-    }));
+    setForm((prev) => {
+      const remaining = prev.existingImages.filter((img) => img !== urlToRemove);
+      if (remaining.length === 0 && selectedFiles.length > 0) {
+        setCoverTarget({ source: "new", index: 0 });
+      }
+      return {
+        ...prev,
+        existingImages: remaining,
+      };
+    });
   };
 
   // Set Existing Image as Primary Cover Photo
@@ -261,6 +309,7 @@ export default function AdminProductsPage() {
         existingImages: [url, ...filtered],
       };
     });
+    setCoverTarget({ source: "existing", index: 0 });
     showToast("Selected as primary cover image!");
   };
 
@@ -271,6 +320,7 @@ export default function AdminProductsPage() {
       const rest = prev.filter((_, i) => i !== index);
       return [target, ...rest];
     });
+    setCoverTarget({ source: "new", index: 0 });
     showToast("Selected as primary cover image!");
   };
 
@@ -342,6 +392,20 @@ export default function AdminProductsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!form.name || !form.name.trim()) {
+      alert("Please enter a Creation Name.");
+      return;
+    }
+    if (!form.price || Number(form.price) <= 0) {
+      alert("Please enter a valid Selling Price (₹) greater than 0.");
+      return;
+    }
+    if (!form.category || !form.categoryId) {
+      alert("Please select a Category.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -367,29 +431,34 @@ export default function AdminProductsPage() {
         formData.append("tags", JSON.stringify(tagArr));
       }
 
-      if (form.existingImages && form.existingImages.length > 0) {
-        formData.append("existingImages", JSON.stringify(form.existingImages));
-      }
+      const cleanExisting = (form.existingImages || [])
+        .map((item) => (typeof item === "string" ? item.trim() : (item?.url || item?.src || item?.image_url || "")))
+        .filter((str) => typeof str === "string" && str.trim().length > 0 && str !== "{}" && str !== "[object Object]");
+      formData.append("existingImages", JSON.stringify(cleanExisting));
+      formData.append("primaryCoverSource", coverTarget.source);
 
       selectedFiles.forEach((file) => {
         formData.append("images", file);
       });
 
       if (editingProduct) {
-        const res = await productsAPI.update(editingProduct._id || editingProduct.id, formData);
+        const targetId = editingProduct._id || editingProduct.id;
+        const res = await productsAPI.update(targetId, formData);
         if (res && res.product) {
           setProducts((prev) =>
             prev.map((p) =>
-              (p._id === editingProduct._id || p.id === editingProduct.id) ? res.product : p
+              (String(p._id) === String(targetId) || String(p.id) === String(targetId)) ? res.product : p
             )
           );
         }
+        await fetchProducts();
         showToast("3D Product updated successfully!");
       } else {
         const res = await productsAPI.create(formData);
         if (res && res.product) {
           setProducts((prev) => [res.product, ...prev]);
         }
+        await fetchProducts();
         showToast("New 3D Product added to catalog!");
       }
 
@@ -403,7 +472,9 @@ export default function AdminProductsPage() {
 
   // Determine active cover image for spotlight preview
   const primaryCoverImage =
-    form.existingImages && form.existingImages.length > 0
+    coverTarget.source === "new" && newFilePreviews.length > 0
+      ? newFilePreviews[0].url
+      : form.existingImages && form.existingImages.length > 0
       ? resolveProductImage(form.existingImages[0])
       : newFilePreviews.length > 0
       ? newFilePreviews[0].url
@@ -590,10 +661,15 @@ export default function AdminProductsPage() {
                       <span className="font-serif font-bold text-sm text-stone-900">
                         ₹{prod.price}
                       </span>
-                      {prod.originalPrice > prod.price && (
-                        <span className="text-[11px] text-stone-400 line-through">
-                          ₹{prod.originalPrice}
-                        </span>
+                      {Number(prod.originalPrice) > Number(prod.price) && (
+                        <>
+                          <span className="text-[11px] text-stone-400 line-through">
+                            ₹{prod.originalPrice}
+                          </span>
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            {Math.round(((Number(prod.originalPrice) - Number(prod.price)) / Number(prod.originalPrice)) * 100)}% OFF
+                          </span>
+                        </>
                       )}
                     </div>
 
@@ -808,6 +884,23 @@ export default function AdminProductsPage() {
                         JPG, PNG, WebP supported. You can select and append multiple files.
                       </p>
                     </div>
+
+                    {/* Image Upload Guidelines Note */}
+                    <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-left text-[11px] text-amber-900 leading-relaxed space-y-1">
+                      <div className="font-bold flex items-center gap-1 text-amber-950">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Product Image Guidelines:</span>
+                      </div>
+                      <p>
+                        • <strong>Aspect Ratio:</strong> Recommended <strong>1:1</strong> (Square, 1000×1000px) or <strong>4:3</strong> (1200×900px).
+                      </p>
+                      <p>
+                        • <strong>Capacity:</strong> Up to <strong>8 photos</strong> per creation, max <strong>15MB</strong> each (JPG, PNG, WebP).
+                      </p>
+                      <p className="text-[10px] text-amber-800">
+                        • <strong>Storage Cleanup:</strong> When updating or deleting products, unused images are automatically purged from the server.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Visual Thumbnails Gallery with Individual Remove & Set-Cover buttons */}
@@ -821,7 +914,7 @@ export default function AdminProductsPage() {
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-1 border border-stone-200 rounded-2xl bg-stone-50/50">
                         {/* 1. Existing Uploaded Images (When Editing) */}
                         {form.existingImages?.map((url, idx) => {
-                          const isCover = idx === 0;
+                          const isCover = coverTarget.source === "existing" && idx === 0;
                           return (
                             <div
                               key={`existing-${idx}`}
@@ -870,7 +963,9 @@ export default function AdminProductsPage() {
 
                         {/* 2. Newly Selected Local File Previews */}
                         {newFilePreviews.map((preview, idx) => {
-                          const isCover = !form.existingImages?.length && idx === 0;
+                          const isCover =
+                            (coverTarget.source === "new" || !form.existingImages?.length) &&
+                            idx === 0;
                           return (
                             <div
                               key={preview.id}
@@ -1041,11 +1136,18 @@ export default function AdminProductsPage() {
                         <DollarSign className="w-4 h-4 text-emerald-600" />
                         <span>Pricing & Value</span>
                       </span>
-                      {Number(form.originalPrice) > Number(form.price) && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          {Math.round(((Number(form.originalPrice) - Number(form.price)) / Number(form.originalPrice)) * 100)}% Discount
-                        </span>
-                      )}
+                      {Number(form.originalPrice) > 0 &&
+                        Number(form.price) > 0 &&
+                        Number(form.originalPrice) > Number(form.price) && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                            {Math.round(
+                              ((Number(form.originalPrice) - Number(form.price)) /
+                                Number(form.originalPrice)) *
+                                100
+                            )}
+                            % OFF
+                          </span>
+                        )}
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1054,8 +1156,8 @@ export default function AdminProductsPage() {
                         <input
                           type="number"
                           required
-                          min={0}
-                          placeholder="1499"
+                          min={1}
+                          placeholder="e.g. 1499"
                           value={form.price}
                           onChange={(e) => setForm({ ...form, price: e.target.value })}
                           className="w-full px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600 font-bold text-sm"
@@ -1067,7 +1169,7 @@ export default function AdminProductsPage() {
                         <input
                           type="number"
                           min={0}
-                          placeholder="1999"
+                          placeholder="e.g. 2000"
                           value={form.originalPrice}
                           onChange={(e) => setForm({ ...form, originalPrice: e.target.value })}
                           className="w-full px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
@@ -1185,40 +1287,55 @@ export default function AdminProductsPage() {
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-stone-200 hover:border-amber-400 cursor-pointer transition-colors shadow-2xs">
                         <input
                           type="checkbox"
                           checked={form.is_featured}
                           onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
-                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                          className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                         />
-                        <span className="font-semibold text-stone-800 text-[11px]">
-                          Featured on Home
-                        </span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-stone-900 text-xs block">
+                            Featured on Home
+                          </span>
+                          <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                            Displays in Homepage Trending / Best-Sellers section
+                          </span>
+                        </div>
                       </label>
 
-                      <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-stone-200 hover:border-amber-400 cursor-pointer transition-colors shadow-2xs">
                         <input
                           type="checkbox"
                           checked={form.showInSlider}
                           onChange={(e) => setForm({ ...form, showInSlider: e.target.checked })}
-                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                          className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                         />
-                        <span className="font-semibold text-stone-800 text-[11px]">
-                          In Banner Slider
-                        </span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-stone-900 text-xs block">
+                            In Banner Slider
+                          </span>
+                          <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                            Appears in Top Hero 3D Card Stack banner
+                          </span>
+                        </div>
                       </label>
 
-                      <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-stone-200 hover:border-amber-400 cursor-pointer transition-colors shadow-2xs">
                         <input
                           type="checkbox"
                           checked={form.isCustomizable}
                           onChange={(e) => setForm({ ...form, isCustomizable: e.target.checked })}
-                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                          className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                         />
-                        <span className="font-semibold text-stone-800 text-[11px]">
-                          3D Customization
-                        </span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-stone-900 text-xs block">
+                            3D Customization
+                          </span>
+                          <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                            User gets Reference Photo upload option when ordering
+                          </span>
+                        </div>
                       </label>
                     </div>
                   </div>

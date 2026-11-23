@@ -57,9 +57,16 @@ const orderUpload = multer({
   fileFilter,
 });
 
+const categoryUpload = multer({
+  storage: createStorage("categories"),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter,
+});
+
 module.exports = {
   productUpload,
   userUpload,
   orderUpload,
+  categoryUpload,
 };
 

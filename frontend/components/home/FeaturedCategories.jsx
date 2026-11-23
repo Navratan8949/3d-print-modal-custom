@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import SectionHeading from "@/components/common/SectionHeading";
-import ProductVisual from "@/components/products/ProductVisual";
 import { categoriesAPI } from "@/lib/api";
+import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function FeaturedCategories() {
   const [categories, setCategories] = useState([]);
@@ -34,19 +34,8 @@ export default function FeaturedCategories() {
     return null;
   }
 
-  const visualMap = {
-    "custom-3d-figurines": "figurine-couple",
-    "personalized-name-models": "name-model",
-    "3d-printed-idols": "khatu-shyam",
-    "home-decor": "flower-bouquet",
-    "decor": "flower-bouquet",
-    "planters-accessories": "cat-planter",
-    "models": "ironman-helmet",
-    "custom-gifts": "figurine-fullbody",
-  };
-
   return (
-    <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="pt-2 pb-10 sm:pt-4 sm:pb-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <SectionHeading
         eyebrow="Curated Collections"
         title="Explore by Category"
@@ -56,7 +45,6 @@ export default function FeaturedCategories() {
       <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {categories.map((category) => {
           const catSlug = category.slug || category.id;
-          const imageKey = visualMap[catSlug] || visualMap[category.id] || "figurine-couple";
 
           return (
             <Link
@@ -64,21 +52,30 @@ export default function FeaturedCategories() {
               href={`/shop?category=${catSlug}`}
               className="group relative flex flex-col justify-between rounded-2xl bg-white border border-stone-200 shadow-xs hover:shadow-xl hover:border-amber-400/80 transition-all duration-300 hover:-translate-y-1.5 overflow-hidden"
             >
-              {/* Visual Header */}
+              {/* Visual Header: Strictly uses uploaded category image, never static public product mockups */}
               <div className="relative aspect-16/10 w-full overflow-hidden bg-stone-100">
-                {category.image_url && category.image_url.startsWith("http") ? (
+                {category.image_url ? (
                   <img
-                    src={category.image_url}
+                    src={resolveProductImage(category.image_url)}
                     alt={category.name}
+                    onError={(e) => handleImageError(e)}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                   />
                 ) : (
-                  <div className="w-full h-full group-hover:scale-105 transition-transform duration-500 ease-out">
-                    <ProductVisual
-                      imageKey={imageKey}
-                      alt={category.name}
-                      aspectRatio="16/10"
-                    />
+                  <div
+                    className="w-full h-full flex flex-col items-center justify-center p-6 text-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${category.accentColor || "#D97706"}15 0%, ${category.accentColor || "#D97706"}35 100%)`,
+                    }}
+                  >
+                    <span className="font-serif font-bold text-xl text-stone-800 drop-shadow-2xs">
+                      {category.name}
+                    </span>
+                    {category.tagline && (
+                      <span className="text-[11px] text-stone-600 mt-1 font-medium">
+                        {category.tagline}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

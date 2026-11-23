@@ -533,50 +533,52 @@ export default function ProductDetailView({ product }) {
               className="w-full px-3.5 py-2.5 rounded-xl border border-amber-200 bg-white text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-600 transition-colors resize-none shadow-2xs"
             />
 
-            {/* Photo Attachment (For Figurines or Custom Keepsakes - Multiple Photos Supported) */}
-            <div className="pt-2 border-t border-amber-200/60 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
-                  <Camera className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Reference Photos for 3D Modeling (Front, Side, Pose):</span>
-                </span>
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-100/60 border border-amber-300 rounded-lg cursor-pointer text-[11px] font-semibold text-amber-900 transition-colors shadow-2xs">
-                  <Upload className="w-3 h-3 text-amber-700" />
-                  <span>{uploadedPhotos.length > 0 ? "+ Add More Photos" : "Attach Photos (Up to 5)"}</span>
-                  <input type="file" multiple accept="image/*" onChange={handlePhotosUpload} className="hidden" />
-                </label>
-              </div>
-
-              {uploadedPhotos.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {uploadedPhotos.map((photo, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-1.5 p-1.5 bg-white rounded-lg border border-amber-200 text-xs shadow-2xs"
-                    >
-                      <div className="relative h-8 w-8 rounded overflow-hidden shrink-0 bg-stone-100">
-                        <img
-                          src={photo.url || photo.preview || (photo instanceof Blob ? URL.createObjectURL(photo) : "")}
-                          alt={`Reference ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="max-w-[90px] truncate text-stone-700 font-medium text-[10px]">
-                        {photo.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(idx)}
-                        className="p-1 text-stone-400 hover:text-red-600 transition-colors"
-                        title="Remove photo"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+            {/* Photo Attachment (For Figurines or Custom Keepsakes - Shown when 3D Customization is Enabled) */}
+            {product.isCustomizable !== false && (
+              <div className="pt-2 border-t border-amber-200/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Reference Photos for 3D Modeling (Front, Side, Pose):</span>
+                  </span>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-100/60 border border-amber-300 rounded-lg cursor-pointer text-[11px] font-semibold text-amber-900 transition-colors shadow-2xs">
+                    <Upload className="w-3 h-3 text-amber-700" />
+                    <span>{uploadedPhotos.length > 0 ? "+ Add More Photos" : "Attach Photos (Up to 5)"}</span>
+                    <input type="file" multiple accept="image/*" onChange={handlePhotosUpload} className="hidden" />
+                  </label>
                 </div>
-              )}
-            </div>
+
+                {uploadedPhotos.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {uploadedPhotos.map((photo, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1.5 p-1.5 bg-white rounded-lg border border-amber-200 text-xs shadow-2xs"
+                      >
+                        <div className="relative h-8 w-8 rounded overflow-hidden shrink-0 bg-stone-100">
+                          <img
+                            src={photo.url || photo.preview || (photo instanceof Blob ? URL.createObjectURL(photo) : "")}
+                            alt={`Reference ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="max-w-[90px] truncate text-stone-700 font-medium text-[10px]">
+                          {photo.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(idx)}
+                          className="p-1 text-stone-400 hover:text-red-600 transition-colors"
+                          title="Remove photo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quantity Selector & Action Buttons (Etsy PDP Buy Box) */}

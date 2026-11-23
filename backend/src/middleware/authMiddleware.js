@@ -22,12 +22,12 @@ const authMiddleware = async (req, res, next) => {
     }
 
     let decoded;
-    const accessSecret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    const accessSecret = process.env.JWT_ACCESS_SECRET;
     try {
       decoded = jwt.verify(parts[1], accessSecret);
     } catch (verifyErr) {
-      if (process.env.JWT_ACCESS_SECRET && process.env.JWT_SECRET) {
-        decoded = jwt.verify(parts[1], process.env.JWT_SECRET);
+      if (process.env.JWT_ACCESS_SECRET) {
+        decoded = jwt.verify(parts[1], process.env.JWT_ACCESS_SECRET);
       } else {
         throw verifyErr;
       }

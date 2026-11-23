@@ -1,16 +1,70 @@
 const Product = require("../models/Product");
 const path = require("path");
 const fs = require("fs");
+const { deleteUnusedServerFile, deleteUnusedServerFiles } = require("../utils/fileCleanup");
+
+// Helper to strictly sanitize image URLs to plain strings
+const sanitizeImageUrl = (img) => {
+  if (!img) return null;
+  if (typeof img === "string") {
+    const trimmed = img.trim();
+    if (
+      !trimmed ||
+      trimmed === "{}" ||
+      trimmed === "[object Object]" ||
+      trimmed.replace(/\s+/g, "") === "{}"
+    ) {
+      return null;
+    }
+    return trimmed;
+  }
+  if (typeof img === "object") {
+    const candidate = img.url || img.src || img.image_url || img.path;
+    if (typeof candidate === "string") {
+      const trimmed = candidate.trim();
+      if (
+        trimmed &&
+        trimmed !== "{}" &&
+        trimmed !== "[object Object]" &&
+        trimmed.replace(/\s+/g, "") !== "{}"
+      ) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+};
 
 // Helper to create slug from title
 const createSlug = (text) => {
-  return text
+  if (!text) return `prod-${Date.now().toString(36)}`;
+  let s = text
     .toString()
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[^\w\-]+/g, "")
-    .replace(/\-\-+/g, "-");
+    .replace(/\-\-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!s || s === "-") {
+    s = `prod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  }
+  return s;
+};
+
+// Helper to look up a product by MongoDB _id, numeric id, or slug
+const findProductByIdOrNum = async (identifier) => {
+  if (!identifier) return null;
+  const strId = String(identifier).trim();
+  if (strId.match(/^[0-9a-fA-F]{24}$/)) {
+    const p = await Product.findById(strId);
+    if (p) return p;
+  }
+  if (!isNaN(Number(strId))) {
+    const p = await Product.findOne({ id: Number(strId) });
+    if (p) return p;
+  }
+  return await Product.findOne({ slug: strId });
 };
 
 // ==========================================
@@ -208,72 +262,114 @@ exports.createProduct = async (req, res) => {
       });
     }
 
-    let slug = createSlug(name);
-    // ensure unique slug
-    const count = await Product.countDocuments({ slug: new RegExp(`^${slug}`, "i") });
-    if (count > 0) {
-      slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    const baseSlug = createSlug(name);
+    let slug = baseSlug;
+    const existingSlug = await Product.findOne({ slug });
+    if (existingSlug) {
+      slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
     }
 
     // Collect uploaded image paths if any
-    let images = [];
+    let existingList = [];
     if (req.body.existingImages) {
       try {
         const parsed =
           typeof req.body.existingImages === "string"
             ? JSON.parse(req.body.existingImages)
             : req.body.existingImages;
-        if (Array.isArray(parsed)) images.push(...parsed);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item) => {
+            const clean = sanitizeImageUrl(item);
+            if (clean) existingList.push(clean);
+          });
+        }
       } catch (e) {
         console.warn("Could not parse existingImages in createProduct:", e.message);
       }
     }
-    if (req.files && req.files.length > 0) {
-      const fileUrls = req.files.map((file) => `/uploads/products/${file.filename}`);
-      images.push(...fileUrls);
-    } else if (req.body.images) {
-      const bodyImages = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
-      images.push(...bodyImages);
-    }
-    images = images.filter((v, i, a) => a.indexOf(v) === i && v);
 
-    const image_url =
-      images.length > 0 ? images[0] : req.body.image_url || "/images/products/placeholder.jpeg";
+    const uploadedList = (req.files && req.files.length > 0)
+      ? req.files.map((file) => `/uploads/products/${file.filename}`)
+      : [];
+
+    const primaryCoverSource = req.body.primaryCoverSource; // "new" | "existing"
+
+    let images = [];
+    if (primaryCoverSource === "new" && uploadedList.length > 0) {
+      images = [...uploadedList, ...existingList];
+    } else if (uploadedList.length > 0) {
+      images = [...uploadedList, ...existingList];
+    } else {
+      images = [...existingList];
+    }
+
+    images = images
+      .map(sanitizeImageUrl)
+      .filter((v, i, a) => typeof v === "string" && v && a.indexOf(v) === i);
+
+    const fallbackUrl = sanitizeImageUrl(req.body.image_url) || "/images/products/placeholder.jpeg";
+    const image_url = images.length > 0 ? images[0] : fallbackUrl;
 
     // Parse options & specifications if sent as strings (e.g. from multipart formData)
     let availableOptions = {};
     if (req.body.availableOptions) {
-      availableOptions =
-        typeof req.body.availableOptions === "string"
-          ? JSON.parse(req.body.availableOptions)
-          : req.body.availableOptions;
+      try {
+        availableOptions =
+          typeof req.body.availableOptions === "string"
+            ? JSON.parse(req.body.availableOptions)
+            : req.body.availableOptions;
+      } catch {
+        availableOptions = {};
+      }
     }
 
     let specifications = [];
     if (req.body.specifications) {
-      specifications =
-        typeof req.body.specifications === "string"
-          ? JSON.parse(req.body.specifications)
-          : req.body.specifications;
+      try {
+        specifications =
+          typeof req.body.specifications === "string"
+            ? JSON.parse(req.body.specifications)
+            : req.body.specifications;
+      } catch {
+        specifications = [];
+      }
     }
 
     let parsedTags = [];
     if (tags) {
-      parsedTags = typeof tags === "string" ? tags.split(",").map((t) => t.trim()) : tags;
+      if (typeof tags === "string") {
+        try {
+          const parsed = JSON.parse(tags);
+          parsedTags = Array.isArray(parsed) ? parsed : tags.split(",").map((t) => t.trim());
+        } catch {
+          parsedTags = tags.split(",").map((t) => t.trim());
+        }
+      } else if (Array.isArray(tags)) {
+        parsedTags = tags;
+      }
+      parsedTags = parsedTags.filter(Boolean);
     }
 
-    const lastProduct = await Product.findOne().sort({ id: -1 });
-    const nextId = (lastProduct && lastProduct.id ? lastProduct.id : 100) + 1;
+    const lastProduct = await Product.findOne({ id: { $exists: true, $ne: null } }).sort({ id: -1 });
+    const nextId = (lastProduct && typeof lastProduct.id === "number" ? lastProduct.id : 100) + 1;
+
+    let sku = req.body.sku ? req.body.sku.trim() : `3DVS-${nextId}`;
+    const existingSku = await Product.findOne({ sku });
+    if (existingSku) {
+      sku = `3DVS-${nextId}-${Date.now().toString().slice(-4)}`;
+    }
+
+    const resolvedCategoryId = categoryId && categoryId.trim() ? categoryId.trim() : createSlug(category);
 
     const product = new Product({
       id: nextId,
-      sku: req.body.sku || `3DVS-${nextId}`,
+      sku,
       slug,
       name: name.trim(),
       price: Number(price),
       originalPrice: originalPrice ? Number(originalPrice) : 0,
       category: category.trim(),
-      categoryId: categoryId ? categoryId.trim() : createSlug(category),
+      categoryId: resolvedCategoryId,
       shortDescription: shortDescription || "",
       description: description || "",
       image_url,
@@ -289,8 +385,8 @@ exports.createProduct = async (req, res) => {
       availableOptions,
       specifications,
       tags: parsedTags,
-      currentStock: currentStock ? Number(currentStock) : 100,
-      status: "active",
+      currentStock: currentStock !== undefined && !isNaN(Number(currentStock)) ? Number(currentStock) : 100,
+      status: req.body.status || "active",
     });
 
     await product.save();
@@ -302,9 +398,12 @@ exports.createProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Create product error:", error);
-    return res.status(500).json({
+    const errorDetails = error.errors
+      ? Object.values(error.errors).map((e) => e.message).join(", ")
+      : error.message;
+    return res.status(400).json({
       success: false,
-      message: "Failed to create product",
+      message: errorDetails || error.message || "Failed to create product",
       error: error.message,
     });
   }
@@ -317,7 +416,7 @@ exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const product = await Product.findById(id);
+    const product = await findProductByIdOrNum(id);
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -329,13 +428,31 @@ exports.updateProduct = async (req, res) => {
 
     // Parse options & specs if passed as strings
     if (typeof updateData.availableOptions === "string") {
-      updateData.availableOptions = JSON.parse(updateData.availableOptions);
+      try {
+        updateData.availableOptions = JSON.parse(updateData.availableOptions);
+      } catch {
+        updateData.availableOptions = {};
+      }
     }
     if (typeof updateData.specifications === "string") {
-      updateData.specifications = JSON.parse(updateData.specifications);
+      try {
+        updateData.specifications = JSON.parse(updateData.specifications);
+      } catch {
+        updateData.specifications = [];
+      }
     }
-    if (typeof updateData.tags === "string") {
-      updateData.tags = updateData.tags.split(",").map((t) => t.trim());
+    if (updateData.tags !== undefined) {
+      if (typeof updateData.tags === "string") {
+        try {
+          const parsed = JSON.parse(updateData.tags);
+          updateData.tags = Array.isArray(parsed) ? parsed : updateData.tags.split(",").map((t) => t.trim());
+        } catch {
+          updateData.tags = updateData.tags.split(",").map((t) => t.trim());
+        }
+      }
+      if (Array.isArray(updateData.tags)) {
+        updateData.tags = updateData.tags.filter(Boolean);
+      }
     }
     if (updateData.showInSlider !== undefined) {
       updateData.showInSlider = updateData.showInSlider === "true" || updateData.showInSlider === true;
@@ -343,43 +460,89 @@ exports.updateProduct = async (req, res) => {
     if (updateData.is_featured !== undefined) {
       updateData.is_featured = updateData.is_featured === "true" || updateData.is_featured === true;
     }
+    if (updateData.isCustomizable !== undefined) {
+      updateData.isCustomizable = updateData.isCustomizable === "false" || updateData.isCustomizable === false ? false : true;
+    }
+    if (updateData.price !== undefined) {
+      updateData.price = Number(updateData.price);
+    }
+    if (updateData.originalPrice !== undefined) {
+      updateData.originalPrice = Number(updateData.originalPrice);
+    }
+    if (updateData.currentStock !== undefined) {
+      updateData.currentStock = Number(updateData.currentStock);
+    }
 
     // Handle existing images if provided (supports reordering or removing images)
-    let currentImages = product.images || [];
+    const oldImages = [...(product.images || [])];
+    if (product.image_url && !oldImages.includes(product.image_url)) {
+      oldImages.push(product.image_url);
+    }
+
+    let currentImages = (product.images || [])
+      .map(sanitizeImageUrl)
+      .filter((v) => typeof v === "string" && v);
+
     if (updateData.existingImages !== undefined) {
       try {
-        currentImages =
+        const parsed =
           typeof updateData.existingImages === "string"
             ? JSON.parse(updateData.existingImages)
             : updateData.existingImages;
-        if (!Array.isArray(currentImages)) currentImages = [];
+        if (Array.isArray(parsed)) {
+          currentImages = parsed
+            .map(sanitizeImageUrl)
+            .filter((v) => typeof v === "string" && v);
+        } else {
+          currentImages = [];
+        }
       } catch (e) {
-        console.warn("Could not parse existingImages:", e.message);
+        currentImages = [];
       }
       delete updateData.existingImages;
     }
 
-    // Append new uploaded images if any
-    if (req.files && req.files.length > 0) {
-      const newImages = req.files.map((file) => `/uploads/products/${file.filename}`);
-      currentImages = [...currentImages, ...newImages];
+    // Uploaded new images from req.files
+    const newUploadedImages = (req.files && req.files.length > 0)
+      ? req.files.map((file) => `/uploads/products/${file.filename}`)
+      : [];
+
+    const primaryCoverSource = req.body.primaryCoverSource; // "new" | "existing"
+
+    let combinedImages = [];
+    if (primaryCoverSource === "new" && newUploadedImages.length > 0) {
+      combinedImages = [...newUploadedImages, ...currentImages];
+    } else {
+      combinedImages = [...currentImages, ...newUploadedImages];
     }
 
-    updateData.images = currentImages;
-    if (currentImages.length > 0) {
-      if (
-        !product.image_url ||
-        !currentImages.includes(product.image_url) ||
-        product.image_url.includes("placeholder")
-      ) {
-        updateData.image_url = currentImages[0];
-      }
-    } else if (!updateData.image_url) {
-      updateData.image_url = "/images/products/placeholder.jpeg";
+    // Filter duplicates, sanitize, and remove placeholder if real images exist
+    combinedImages = combinedImages
+      .map(sanitizeImageUrl)
+      .filter((v, i, a) => typeof v === "string" && v && a.indexOf(v) === i);
+
+    if (combinedImages.length > 1) {
+      combinedImages = combinedImages.filter((img) => !img.includes("placeholder"));
+    }
+
+    updateData.images = combinedImages;
+    if (combinedImages.length > 0) {
+      updateData.image_url = combinedImages[0];
+    } else {
+      updateData.image_url = sanitizeImageUrl(updateData.image_url) || "/images/products/placeholder.jpeg";
     }
 
     Object.assign(product, updateData);
     await product.save();
+
+    // Clean up removed images that are no longer used by any product or category
+    const activeImages = new Set([product.image_url, ...(product.images || [])]);
+    const removedImages = oldImages.filter((img) => !activeImages.has(img));
+    if (removedImages.length > 0) {
+      deleteUnusedServerFiles(removedImages).catch((e) =>
+        console.warn("Cleanup unused product images error:", e.message)
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -388,9 +551,12 @@ exports.updateProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Update product error:", error);
-    return res.status(500).json({
+    const errorDetails = error.errors
+      ? Object.values(error.errors).map((e) => e.message).join(", ")
+      : error.message;
+    return res.status(400).json({
       success: false,
-      message: "Failed to update product",
+      message: errorDetails || error.message || "Failed to update product",
       error: error.message,
     });
   }
@@ -402,13 +568,27 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findByIdAndDelete(id);
+    const product = await findProductByIdOrNum(id);
 
     if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found",
       });
+    }
+
+    const productImages = [...(product.images || [])];
+    if (product.image_url && !productImages.includes(product.image_url)) {
+      productImages.push(product.image_url);
+    }
+
+    await Product.findByIdAndDelete(product._id);
+
+    // Clean up server images if no other product/category uses them
+    if (productImages.length > 0) {
+      deleteUnusedServerFiles(productImages).catch((e) =>
+        console.warn("Cleanup deleted product images error:", e.message)
+      );
     }
 
     return res.status(200).json({
@@ -430,7 +610,7 @@ exports.deleteProduct = async (req, res) => {
 exports.toggleFeatured = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await findProductByIdOrNum(id);
 
     if (!product) {
       return res.status(404).json({
@@ -462,7 +642,7 @@ exports.toggleFeatured = async (req, res) => {
 exports.toggleShowInSlider = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await findProductByIdOrNum(id);
 
     if (!product) {
       return res.status(404).json({
@@ -503,7 +683,7 @@ exports.deleteProductImage = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+    const product = await findProductByIdOrNum(id);
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -522,14 +702,11 @@ exports.deleteProductImage = async (req, res) => {
 
     await product.save();
 
-    // Optionally try to delete file from disk if local upload
-    if (typeof imageUrl === "string" && imageUrl.startsWith("/uploads/")) {
-      const filePath = path.join(__dirname, "..", "..", imageUrl);
-      fs.unlink(filePath, (err) => {
-        if (err && err.code !== "ENOENT") {
-          console.warn("Could not delete file from disk:", filePath, err.message);
-        }
-      });
+    // Check if any other product/category uses this image before unlinking
+    if (typeof imageUrl === "string") {
+      deleteUnusedServerFile(imageUrl).catch((e) =>
+        console.warn("Cleanup deleted product image error:", e.message)
+      );
     }
 
     return res.status(200).json({
@@ -562,7 +739,7 @@ exports.setPrimaryProductImage = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+    const product = await findProductByIdOrNum(id);
     if (!product) {
       return res.status(404).json({
         success: false,

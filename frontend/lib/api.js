@@ -15,9 +15,6 @@ const API_BASE_URL =
 // ==========================================
 export const axiosClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
   withCredentials: true, // Transmit HttpOnly cookies across origins
 });
 
@@ -36,13 +33,26 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor: Attach in-memory Access Token
+// Request Interceptor: Attach in-memory Access Token & Handle FormData headers
 axiosClient.interceptors.request.use(
   (config) => {
     const token = tokenManager.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // CRITICAL: When transmitting FormData (file uploads), do NOT force application/json!
+    // Deleting Content-Type allows Axios and the browser to set:
+    // 'multipart/form-data; boundary=----WebKitFormBoundary...'
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+      if (config.headers?.delete) {
+        config.headers.delete("Content-Type");
+      }
+    } else if (!config.headers["Content-Type"]) {
+      config.headers["Content-Type"] = "application/json";
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -125,6 +135,7 @@ async function request(endpoint, options = {}) {
     if (options.body instanceof FormData) {
       data = options.body;
       delete headers["Content-Type"];
+      headers["Content-Type"] = undefined;
     } else if (typeof options.body === "string") {
       try {
         data = JSON.parse(options.body);
@@ -145,8 +156,10 @@ async function request(endpoint, options = {}) {
     });
     return response.data;
   } catch (error) {
+    const errorData = error.response?.data;
     const msg =
-      error.response?.data?.message ||
+      errorData?.message ||
+      errorData?.error ||
       error.message ||
       `Request failed with status ${error.response?.status || 500}`;
     throw new Error(msg);
@@ -440,16 +453,28 @@ export const categoriesAPI = {
   },
 
   create: async (categoryData) => {
+    let body;
+    if (categoryData instanceof FormData) {
+      body = categoryData;
+    } else {
+      body = JSON.stringify(categoryData);
+    }
     return request("/categories", {
       method: "POST",
-      body: JSON.stringify(categoryData),
+      body,
     });
   },
 
   update: async (id, categoryData) => {
+    let body;
+    if (categoryData instanceof FormData) {
+      body = categoryData;
+    } else {
+      body = JSON.stringify(categoryData);
+    }
     return request(`/categories/${id}`, {
       method: "PUT",
-      body: JSON.stringify(categoryData),
+      body,
     });
   },
 
