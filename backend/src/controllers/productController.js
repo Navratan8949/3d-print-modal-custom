@@ -533,6 +533,10 @@ exports.updateProduct = async (req, res) => {
     }
 
     Object.assign(product, updateData);
+    if (updateData.availableOptions) {
+      product.availableOptions = updateData.availableOptions;
+      product.markModified("availableOptions");
+    }
     await product.save();
 
     // Clean up removed images that are no longer used by any product or category

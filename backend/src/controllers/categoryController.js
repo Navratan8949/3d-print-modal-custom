@@ -17,7 +17,6 @@ exports.getAllCategories = async (req, res) => {
         $group: {
           _id: "$categoryId",
           count: { $sum: 1 },
-          sampleImage: { $first: "$image_url" },
         },
       },
     ]);
@@ -39,7 +38,7 @@ exports.getAllCategories = async (req, res) => {
         description: cat.description,
         tagline: cat.tagline,
         accentColor: cat.accentColor,
-        image_url: cat.image_url || (stat && stat.sampleImage) || "",
+        image_url: cat.image_url || "/images/products/placeholder.png",
         itemCount: `${count} Item${count === 1 ? "" : "s"}`,
         actualProductCount: count,
         order: cat.order,
@@ -204,6 +203,7 @@ exports.updateCategory = async (req, res) => {
       tagline,
       accentColor,
       image_url,
+      removeImage,
       order,
       status,
     } = req.body;
@@ -233,9 +233,18 @@ exports.updateCategory = async (req, res) => {
     if (tagline !== undefined) category.tagline = tagline.trim();
     if (accentColor !== undefined) category.accentColor = accentColor.trim();
 
+    const shouldRemoveImage =
+      removeImage === "true" ||
+      removeImage === true ||
+      image_url === "" ||
+      image_url === null ||
+      image_url === "null";
+
     if (req.file) {
       category.image_url = `/uploads/categories/${req.file.filename}`;
-    } else if (image_url !== undefined && typeof image_url === "string" && image_url.trim()) {
+    } else if (shouldRemoveImage) {
+      category.image_url = "";
+    } else if (image_url !== undefined && typeof image_url === "string") {
       category.image_url = image_url.trim();
     }
 

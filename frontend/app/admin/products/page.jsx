@@ -65,8 +65,10 @@ export default function AdminProductsPage() {
     price: "",
     originalPrice: "",
     material: "High-Density UV Resin & Eco-PLA+",
+    finishes: "Matte Natural, Artisan Hand-Detailed, Gloss Finish",
     print_time: "1-2 working days",
     dimensions: "12-15 cm height",
+    sizes: "Standard Scale (12-15 cm), Large Display (18-20 cm)",
     shortDescription: "",
     description: "",
     is_featured: false,
@@ -217,6 +219,18 @@ export default function AdminProductsPage() {
       (img) => typeof img === "string" && img.length > 0 && img !== "{}" && img !== "[object Object]"
     );
 
+    const sizesString =
+      prod.availableOptions?.sizes && Array.isArray(prod.availableOptions.sizes) && prod.availableOptions.sizes.length > 0
+        ? prod.availableOptions.sizes.join(", ")
+        : prod.dimensions || "Standard Scale (12-15 cm), Large Display (18-20 cm)";
+
+    const finishesString =
+      prod.availableOptions?.finishes && Array.isArray(prod.availableOptions.finishes) && prod.availableOptions.finishes.length > 0
+        ? prod.availableOptions.finishes.join(", ")
+        : prod.availableOptions?.types && Array.isArray(prod.availableOptions.types) && prod.availableOptions.types.length > 0
+          ? prod.availableOptions.types.join(", ")
+          : prod.material || "Matte Natural, Artisan Hand-Detailed, Gloss Finish";
+
     setForm({
       name: prod.name || "",
       category: prod.category || "",
@@ -224,8 +238,10 @@ export default function AdminProductsPage() {
       price: prod.price || "",
       originalPrice: prod.originalPrice || "",
       material: prod.material || "High-Density UV Resin & Eco-PLA+",
+      finishes: finishesString,
       print_time: prod.print_time || "1-2 working days",
       dimensions: prod.dimensions || "12-15 cm height",
+      sizes: sizesString,
       shortDescription: prod.shortDescription || "",
       description: prod.description || "",
       is_featured: Boolean(prod.is_featured),
@@ -415,9 +431,22 @@ export default function AdminProductsPage() {
       formData.append("categoryId", form.categoryId);
       formData.append("price", form.price);
       if (form.originalPrice) formData.append("originalPrice", form.originalPrice);
-      formData.append("material", form.material);
+      const sizeArray = form.sizes
+        ? form.sizes.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const finishArray = form.finishes
+        ? form.finishes.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+
+      const availableOptions = {
+        ...(editingProduct?.availableOptions || {}),
+        sizes: sizeArray.length > 0 ? sizeArray : undefined,
+        finishes: finishArray.length > 0 ? finishArray : undefined,
+      };
+      formData.append("availableOptions", JSON.stringify(availableOptions));
+      formData.append("material", form.material || (finishArray[0] || "UV Resin & Eco-PLA"));
       formData.append("print_time", form.print_time);
-      formData.append("dimensions", form.dimensions);
+      formData.append("dimensions", form.dimensions || (sizeArray[0] || "12-15 cm height"));
       formData.append("shortDescription", form.shortDescription);
       formData.append("description", form.description);
       formData.append("is_featured", form.is_featured);
@@ -475,10 +504,10 @@ export default function AdminProductsPage() {
     coverTarget.source === "new" && newFilePreviews.length > 0
       ? newFilePreviews[0].url
       : form.existingImages && form.existingImages.length > 0
-      ? resolveProductImage(form.existingImages[0])
-      : newFilePreviews.length > 0
-      ? newFilePreviews[0].url
-      : null;
+        ? resolveProductImage(form.existingImages[0])
+        : newFilePreviews.length > 0
+          ? newFilePreviews[0].url
+          : null;
 
   const totalImageCount = (form.existingImages?.length || 0) + newFilePreviews.length;
 
@@ -508,7 +537,7 @@ export default function AdminProductsPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 font-semibold text-xs transition-colors shadow-2xs"
           >
             <Layers className="w-4 h-4 text-amber-600" />
-            <span>Manage Categories & Priority ({categories.length}) →</span>
+            <span>Manage Categories ({categories.length}) →</span>
           </Link>
 
           {/* Add New Product Button */}
@@ -517,7 +546,7 @@ export default function AdminProductsPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New 3D Product</span>
+            <span>Add New Product</span>
           </button>
         </div>
       </div>
@@ -582,6 +611,7 @@ export default function AdminProductsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {products.map((prod) => {
+            console.log("prod", prod);
             const inStock = prod.currentStock > 0 && prod.status !== "out_of_stock";
             return (
               <div
@@ -591,7 +621,7 @@ export default function AdminProductsPage() {
                 <div>
                   <div className="relative aspect-4/3 bg-stone-100 overflow-hidden">
                     <img
-                      src={resolveProductImage(prod.image_url || prod.images?.[0])}
+                      src={resolveProductImage(prod.images?.[0])}
                       alt={prod.name}
                       onError={(e) => handleImageError(e)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -606,7 +636,7 @@ export default function AdminProductsPage() {
                       )}
                       {prod.showInSlider && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-600 text-white shadow-xs">
-                          In Hero Slider ✓
+                          In Slider ✓
                         </span>
                       )}
                     </div>
@@ -614,11 +644,10 @@ export default function AdminProductsPage() {
                     {/* Top Right Quick Star */}
                     <button
                       onClick={() => handleToggleFeatured(prod._id || prod.id)}
-                      className={`absolute top-2.5 right-2.5 p-1.5 rounded-full backdrop-blur-xs transition-colors ${
-                        prod.is_featured
-                          ? "bg-amber-500 text-white"
-                          : "bg-white/80 text-stone-400 hover:text-amber-500"
-                      }`}
+                      className={`absolute top-2.5 right-2.5 p-1.5 rounded-full backdrop-blur-xs transition-colors ${prod.is_featured
+                        ? "bg-amber-500 text-white"
+                        : "bg-white/80 text-stone-400 hover:text-amber-500"
+                        }`}
                       title="Toggle Featured on Homepage"
                     >
                       <Star className="w-3.5 h-3.5 fill-current" />
@@ -635,11 +664,10 @@ export default function AdminProductsPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleStock(prod)}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase transition-colors cursor-pointer ${
-                          inStock
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
-                            : "bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100"
-                        }`}
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase transition-colors cursor-pointer ${inStock
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+                          : "bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100"
+                          }`}
                         title="Click to toggle Stock Status"
                       >
                         {inStock ? `In Stock (${prod.currentStock || "✓"})` : "Out of Stock"}
@@ -681,11 +709,10 @@ export default function AdminProductsPage() {
                     <div className="pt-2">
                       <button
                         onClick={() => handleToggleSlider(prod._id || prod.id)}
-                        className={`w-full py-1 text-[11px] font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
-                          prod.showInSlider
-                            ? "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
-                            : "bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100"
-                        }`}
+                        className={`w-full py-1 text-[11px] font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${prod.showInSlider
+                          ? "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+                          : "bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100"
+                          }`}
                       >
                         <Zap className="w-3 h-3 text-amber-500" />
                         <span>{prod.showInSlider ? "Active in Hero Slider" : "Add to Hero Slider"}</span>
@@ -723,14 +750,6 @@ export default function AdminProductsPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditModal(prod)}
-                    className="text-[11px] font-semibold text-amber-700 hover:underline cursor-pointer"
-                  >
-                    Quick Edit ↗
-                  </button>
                 </div>
               </div>
             );
@@ -744,11 +763,10 @@ export default function AdminProductsPage() {
       {isModalOpen && (
         <div className={`fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center ${isFullScreen ? "p-0" : "p-2 sm:p-4 md:p-6"}`}>
           <div
-            className={`bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in zoom-in-95 ${
-              isFullScreen
-                ? "w-full h-full rounded-none"
-                : "w-full h-full max-w-6xl max-h-[96vh] rounded-3xl border border-stone-200/90"
-            }`}
+            className={`bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in zoom-in-95 ${isFullScreen
+              ? "w-full h-full rounded-none"
+              : "w-full h-full max-w-6xl max-h-[96vh] rounded-3xl border border-stone-200/90"
+              }`}
           >
             {/* Modal Header */}
             <div className="p-4 sm:p-5 bg-stone-900 text-white flex items-center justify-between border-b border-stone-800 shrink-0">
@@ -852,11 +870,10 @@ export default function AdminProductsPage() {
                     }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
-                    className={`p-4 rounded-2xl border-2 border-dashed transition-all text-center space-y-2 ${
-                      isDragging
-                        ? "border-amber-600 bg-amber-50/60 scale-[0.99]"
-                        : "border-stone-300 bg-stone-50 hover:bg-stone-100/60"
-                    }`}
+                    className={`p-4 rounded-2xl border-2 border-dashed transition-all text-center space-y-2 ${isDragging
+                      ? "border-amber-600 bg-amber-50/60 scale-[0.99]"
+                      : "border-stone-300 bg-stone-50 hover:bg-stone-100/60"
+                      }`}
                   >
                     <input
                       ref={fileInputRef}
@@ -918,9 +935,8 @@ export default function AdminProductsPage() {
                           return (
                             <div
                               key={`existing-${idx}`}
-                              className={`relative aspect-square rounded-xl overflow-hidden border bg-white shadow-2xs group ${
-                                isCover ? "border-amber-500 ring-2 ring-amber-500/20" : "border-stone-200"
-                              }`}
+                              className={`relative aspect-square rounded-xl overflow-hidden border bg-white shadow-2xs group ${isCover ? "border-amber-500 ring-2 ring-amber-500/20" : "border-stone-200"
+                                }`}
                             >
                               <img
                                 src={resolveProductImage(url)}
@@ -969,9 +985,8 @@ export default function AdminProductsPage() {
                           return (
                             <div
                               key={preview.id}
-                              className={`relative aspect-square rounded-xl overflow-hidden border bg-white shadow-2xs group ${
-                                isCover ? "border-amber-500 ring-2 ring-amber-500/20" : "border-stone-200"
-                              }`}
+                              className={`relative aspect-square rounded-xl overflow-hidden border bg-white shadow-2xs group ${isCover ? "border-amber-500 ring-2 ring-amber-500/20" : "border-stone-200"
+                                }`}
                             >
                               <img
                                 src={preview.url}
@@ -1143,7 +1158,7 @@ export default function AdminProductsPage() {
                             {Math.round(
                               ((Number(form.originalPrice) - Number(form.price)) /
                                 Number(form.originalPrice)) *
-                                100
+                              100
                             )}
                             % OFF
                           </span>
@@ -1178,44 +1193,110 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* 3. 3D Fabrication Technical Specs */}
-                  <div className="bg-stone-50/70 p-4 sm:p-5 rounded-2xl border border-stone-200/90 space-y-3">
-                    <span className="font-bold text-xs uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
-                      <Ruler className="w-4 h-4 text-purple-600" />
-                      <span>3D Fabrication Specifications</span>
-                    </span>
+                  {/* 3. 3D Fabrication Technical Specs & Customer Dynamic Options */}
+                  <div className="bg-stone-50/70 p-4 sm:p-5 rounded-2xl border border-stone-200/90 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+                        <Ruler className="w-4 h-4 text-purple-600" />
+                        <span>3D Fabrication Specs & Customer Dynamic Options</span>
+                      </span>
+                      <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
+                        Dynamic Dropdown Options
+                      </span>
+                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="font-semibold text-stone-700">Material</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. UV Resin / PLA+"
-                          value={form.material}
-                          onChange={(e) => setForm({ ...form, material: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
-                        />
+                    {/* Scale / Dimensions String Input */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-stone-700 text-xs">
+                          Select Scale / Dimensions Options (Comma-separated string input) <span className="text-amber-600">*</span>
+                        </label>
+                        <span className="text-[10px] text-stone-400">
+                          Shown under &quot;Select Scale / Dimensions&quot;
+                        </span>
                       </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. Standard Scale (12-15 cm), Large Display (18-20 cm), Grand 25 cm"
+                        value={form.sizes}
+                        onChange={(e) => setForm({ ...form, sizes: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-900 focus:outline-hidden focus:border-amber-600 shadow-2xs font-medium"
+                      />
+                      {form.sizes && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <span className="text-[10px] text-stone-500 font-semibold">Options Preview:</span>
+                          {form.sizes
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                            .map((s, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 text-[10px] font-bold"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="space-y-1">
-                        <label className="font-semibold text-stone-700">Dimensions</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 15cm Height"
-                          value={form.dimensions}
-                          onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
-                        />
+                    {/* Finish / Material String Input */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-stone-700 text-xs">
+                          Select Finish / Material Options (Comma-separated string input) <span className="text-amber-600">*</span>
+                        </label>
+                        <span className="text-[10px] text-stone-400">
+                          Shown under &quot;Select Finish / Material&quot;
+                        </span>
                       </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. Matte Natural, Artisan Hand-Detailed, Gloss Finish, Metallic Bronze"
+                        value={form.finishes}
+                        onChange={(e) => setForm({ ...form, finishes: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-900 focus:outline-hidden focus:border-amber-600 shadow-2xs font-medium"
+                      />
+                      {form.finishes && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <span className="text-[10px] text-stone-500 font-semibold">Options Preview:</span>
+                          {form.finishes
+                            .split(",")
+                            .map((f) => f.trim())
+                            .filter(Boolean)
+                            .map((f, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold"
+                              >
+                                {f}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div className="space-y-1">
-                        <label className="font-semibold text-stone-700">Fabrication Time</label>
+                        <label className="font-semibold text-stone-700 text-xs">Fabrication Time</label>
                         <input
                           type="text"
-                          placeholder="e.g. 1-2 Days"
+                          placeholder="e.g. 1-2 working days"
                           value={form.print_time}
                           onChange={(e) => setForm({ ...form, print_time: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-900 focus:outline-hidden focus:border-amber-600"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-900 focus:outline-hidden focus:border-amber-600"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-semibold text-stone-700 text-xs">Base Material Tag</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. High-Density UV Resin & Eco-PLA+"
+                          value={form.material}
+                          onChange={(e) => setForm({ ...form, material: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-900 focus:outline-hidden focus:border-amber-600"
                         />
                       </div>
                     </div>

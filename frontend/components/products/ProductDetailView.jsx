@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -54,22 +54,46 @@ export default function ProductDetailView({ product }) {
     setSelectedImageIndex((prev) => (prev + 1) % images.length);
   };
 
-  // Variations & Options
-  const sizeOptions = product.availableOptions?.sizes || ["Standard Scale (12-15 cm)", "Large Display (18-20 cm)"];
-  const finishOptions = product.availableOptions?.finishes ||
-    product.availableOptions?.types || ["Matte Natural", "Artisan Hand-Detailed", "Gloss Finish"];
+  // Dynamic Variations & Options (Admin Configured)
+  const sizeOptions = Array.isArray(product.availableOptions?.sizes) && product.availableOptions.sizes.length > 0
+    ? product.availableOptions.sizes
+    : typeof product.dimensions === "string" && product.dimensions.trim().length > 0
+      ? product.dimensions.split(",").map((s) => s.trim()).filter(Boolean)
+      : ["Standard Scale (12-15 cm)", "Large Display (18-20 cm)"];
 
-  const [selectedSize, setSelectedSize] = useState(sizeOptions[0]);
-  const [selectedFinish, setSelectedFinish] = useState(finishOptions[0]);
+  const finishOptions = Array.isArray(product.availableOptions?.finishes) && product.availableOptions.finishes.length > 0
+    ? product.availableOptions.finishes
+    : Array.isArray(product.availableOptions?.types) && product.availableOptions.types.length > 0
+      ? product.availableOptions.types
+      : typeof product.material === "string" && product.material.trim().length > 0
+        ? product.material.split(",").map((s) => s.trim()).filter(Boolean)
+        : ["Matte Natural", "Artisan Hand-Detailed", "Gloss Finish"];
+
+  const [selectedSize, setSelectedSize] = useState(sizeOptions[0] || "");
+  const [selectedFinish, setSelectedFinish] = useState(finishOptions[0] || "");
   const [quantity, setQuantity] = useState(1);
+
+  // Synchronize options if product props change dynamically
+  useEffect(() => {
+    if (sizeOptions.length > 0 && (!selectedSize || !sizeOptions.includes(selectedSize))) {
+      setSelectedSize(sizeOptions[0]);
+    }
+  }, [product.availableOptions?.sizes, product.dimensions]);
+
+  useEffect(() => {
+    if (finishOptions.length > 0 && (!selectedFinish || !finishOptions.includes(selectedFinish))) {
+      setSelectedFinish(finishOptions[0]);
+    }
+  }, [product.availableOptions?.finishes, product.material]);
 
   // Dynamic pricing: larger sizes add modest tiered pricing
   const basePrice = product.price || 999;
-  const sizePriceMultiplier = selectedSize.includes("Large") || selectedSize.includes("Medium") || selectedSize.includes("18") || selectedSize.includes("20")
-    ? 1.25
-    : selectedSize.includes("Grand") || selectedSize.includes("25")
-    ? 1.5
-    : 1;
+  const sizePriceMultiplier =
+    selectedSize && (selectedSize.includes("Large") || selectedSize.includes("Medium") || selectedSize.includes("18") || selectedSize.includes("20"))
+      ? 1.25
+      : selectedSize && (selectedSize.includes("Grand") || selectedSize.includes("25") || selectedSize.includes("30"))
+        ? 1.5
+        : 1;
 
   const currentUnitPrice = Math.round(basePrice * sizePriceMultiplier);
   const currentOriginalUnitPrice = Math.round((product.originalPrice || basePrice * 1.35) * sizePriceMultiplier);
@@ -126,11 +150,11 @@ export default function ProductDetailView({ product }) {
       ...(personalizationText ? { "Personalization / Engraving": personalizationText } : {}),
       ...(uploadedPhotos.length > 0
         ? {
-            "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
-            referencePhotoUrl: firstPhoto,
-            referencePhotos: photoUrls,
-            referencePhotoNames: uploadedPhotos.map((p) => p.name),
-          }
+          "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
+          referencePhotoUrl: firstPhoto,
+          referencePhotos: photoUrls,
+          referencePhotoNames: uploadedPhotos.map((p) => p.name),
+        }
         : {}),
     };
 
@@ -161,11 +185,11 @@ export default function ProductDetailView({ product }) {
       ...(personalizationText ? { "Personalization / Engraving": personalizationText } : {}),
       ...(uploadedPhotos.length > 0
         ? {
-            "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
-            referencePhotoUrl: firstPhoto,
-            referencePhotos: photoUrls,
-            referencePhotoNames: uploadedPhotos.map((p) => p.name),
-          }
+          "Reference Photos": `${uploadedPhotos.length} photo(s) attached (${uploadedPhotos.map((p) => p.name).join(", ")})`,
+          referencePhotoUrl: firstPhoto,
+          referencePhotos: photoUrls,
+          referencePhotoNames: uploadedPhotos.map((p) => p.name),
+        }
         : {}),
     };
 
@@ -222,7 +246,7 @@ export default function ProductDetailView({ product }) {
   return (
     <div className="space-y-12 pb-28 sm:pb-0">
       {/* Top Header: Breadcrumbs & Prev/Next Product Chevrons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-stone-500 pb-4 border-b border-stone-200">
+      <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-stone-500 pb-4 border-b border-stone-200">
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/" className="hover:text-amber-700 transition-colors">
             Home
@@ -328,11 +352,10 @@ export default function ProductDetailView({ product }) {
                   key={idx}
                   type="button"
                   onClick={() => setSelectedImageIndex(idx)}
-                  className={`relative h-20 w-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all bg-stone-50 flex items-center justify-center p-1 ${
-                    selectedImageIndex === idx
-                      ? "border-amber-600 ring-2 ring-amber-600/20 scale-102 shadow-xs"
-                      : "border-stone-200 hover:border-stone-400 opacity-70 hover:opacity-100"
-                  }`}
+                  className={`relative h-20 w-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all bg-stone-50 flex items-center justify-center p-1 ${selectedImageIndex === idx
+                    ? "border-amber-600 ring-2 ring-amber-600/20 scale-102 shadow-xs"
+                    : "border-stone-200 hover:border-stone-400 opacity-70 hover:opacity-100"
+                    }`}
                 >
                   <img
                     src={resolveImageUrl(img)}
@@ -345,45 +368,6 @@ export default function ProductDetailView({ product }) {
               ))}
             </div>
           )}
-
-          {/* Etsy Trust Badges Card */}
-          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-3 text-xs text-stone-700">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-700 shrink-0">
-                <ShieldCheck className="w-4 h-4 text-amber-600" />
-              </div>
-              <div>
-                <span className="font-bold text-stone-900 block">Prime3D Purchase Protection</span>
-                <span className="text-stone-500 text-[11px]">
-                  Shop with confidence. If item arrives broken or lost, we replace it 100% free.
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shrink-0">
-                <Truck className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div>
-                <span className="font-bold text-stone-900 block">Dispatches from Jaipur, India</span>
-                <span className="text-stone-500 text-[11px]">
-                  Estimated delivery in 3-5 business days across all states.
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
-              <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-700 shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <span className="font-bold text-stone-900 block">WhatsApp 3D Preview Approval</span>
-                <span className="text-stone-500 text-[11px]">
-                  You get digital photos/renders to approve before final dispatch.
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Buy Box, Etsy Personalization & Customization */}
@@ -449,13 +433,51 @@ export default function ProductDetailView({ product }) {
             </div>
           </div>
 
+          {/* Prime3D Purchase Protection Card (Directly Below Price) */}
+          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-3 text-xs text-stone-700">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-700 shrink-0">
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <span className="font-bold text-stone-900 block">Prime3D Purchase Protection</span>
+                <span className="text-stone-500 text-[11px]">
+                  Shop with confidence. If item arrives broken or lost, we replace it 100% free.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+              <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shrink-0">
+                <Truck className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <span className="font-bold text-stone-900 block">Dispatches from Jaipur, India</span>
+                <span className="text-stone-500 text-[11px]">
+                  Estimated delivery in 3-5 business days across all states.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+              <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-700 shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <span className="font-bold text-stone-900 block">WhatsApp 3D Preview Approval</span>
+                <span className="text-stone-500 text-[11px]">
+                  You get digital photos/renders to approve before final dispatch.
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Variations: Dimensions / Scale Selector */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <label className="font-bold text-stone-900 uppercase tracking-wider">
                 Select Scale / Dimensions <span className="text-red-500">*</span>
               </label>
-              <span className="text-stone-500 font-medium">{selectedSize}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {sizeOptions.map((sz) => {
@@ -465,11 +487,10 @@ export default function ProductDetailView({ product }) {
                     key={sz}
                     type="button"
                     onClick={() => setSelectedSize(sz)}
-                    className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border text-left flex items-center justify-between transition-all ${
-                      isSelected
-                        ? "bg-stone-900 text-white border-stone-900 shadow-xs"
-                        : "bg-white text-stone-700 border-stone-200 hover:border-stone-400"
-                    }`}
+                    className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border text-left flex items-center justify-between transition-all ${isSelected
+                      ? "bg-stone-900 text-white border-stone-900 shadow-xs"
+                      : "bg-white text-stone-700 border-stone-200 hover:border-stone-400"
+                      }`}
                   >
                     <span className="truncate">{sz}</span>
                     {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1" />}
@@ -485,7 +506,6 @@ export default function ProductDetailView({ product }) {
               <label className="font-bold text-stone-900 uppercase tracking-wider">
                 Select Finish / Material <span className="text-red-500">*</span>
               </label>
-              <span className="text-stone-500 font-medium">{selectedFinish}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {finishOptions.map((fin) => {
@@ -495,11 +515,10 @@ export default function ProductDetailView({ product }) {
                     key={fin}
                     type="button"
                     onClick={() => setSelectedFinish(fin)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                      isSelected
-                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                        : "bg-white text-stone-700 border-stone-200 hover:border-stone-400"
-                    }`}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${isSelected
+                      ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                      : "bg-white text-stone-700 border-stone-200 hover:border-stone-400"
+                      }`}
                   >
                     {fin}
                   </button>
@@ -617,7 +636,7 @@ export default function ProductDetailView({ product }) {
                 className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-linear-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-base shadow-lg shadow-amber-500/25 transition-all active:scale-[0.99] group cursor-pointer"
               >
                 <Zap className="w-5 h-5 fill-current text-stone-950 transition-transform group-hover:scale-125" />
-                <span>⚡ Buy Now (Instant Checkout)</span>
+                <span>Buy Now</span>
               </button>
 
               {/* Secondary Buttons: Add to Cart & WhatsApp */}
@@ -689,11 +708,10 @@ export default function ProductDetailView({ product }) {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? "border-amber-600 text-stone-950 font-black"
-                  : "border-transparent text-stone-500 hover:text-stone-800"
-              }`}
+              className={`px-5 py-3 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === tab.id
+                ? "border-amber-600 text-stone-950 font-black"
+                : "border-transparent text-stone-500 hover:text-stone-800"
+                }`}
             >
               {tab.label}
             </button>
@@ -934,7 +952,7 @@ export default function ProductDetailView({ product }) {
               className="flex-1 flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-sm shadow-md active:scale-98 transition-all cursor-pointer"
             >
               <Zap className="w-4 h-4 fill-current" />
-              <span>⚡ Buy Now</span>
+              <span>Buy Now</span>
             </button>
           </div>
         </div>

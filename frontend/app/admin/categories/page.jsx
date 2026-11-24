@@ -27,7 +27,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { categoriesAPI } from "@/lib/api";
-import { resolveProductImage } from "@/lib/imageUtils";
+import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 const COLOR_PRESETS = [
   "#D97706", // Amber
@@ -166,8 +166,11 @@ export default function AdminCategoriesPage() {
 
       if (categoryImageFile) {
         dataToSend.append("image", categoryImageFile);
-      } else if (formData.image_url) {
+      } else if (formData.image_url && formData.image_url.trim()) {
         dataToSend.append("image_url", formData.image_url.trim());
+      } else {
+        dataToSend.append("image_url", "");
+        dataToSend.append("removeImage", "true");
       }
 
       if (editingCategory) {
@@ -381,7 +384,7 @@ export default function AdminCategoriesPage() {
           </div>
         ) : filteredCategories.length === 0 ? (
           <div className="p-12 text-center space-y-2">
-            <p className="text-sm font-semibold text-stone-800">No categories found matching "{searchTerm}"</p>
+            <p className="text-sm font-semibold text-stone-800">No categories found matching &quot;{searchTerm}&quot;</p>
             <p className="text-xs text-stone-500">Try adjusting your search query.</p>
           </div>
         ) : (
@@ -442,18 +445,12 @@ export default function AdminCategoriesPage() {
 
                     {/* Category Cover Photo Thumbnail */}
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0 shadow-2xs group">
-                      {cat.image_url ? (
-                        <img
-                          src={resolveProductImage(cat.image_url)}
-                          alt={cat.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-50">
-                          <ImageIcon className="w-4 h-4 text-stone-300" />
-                          <span className="text-[8px] text-stone-400 font-semibold">No Image</span>
-                        </div>
-                      )}
+                      <img
+                        src={resolveProductImage(cat.image_url)}
+                        alt={cat.name}
+                        onError={(e) => handleImageError(e)}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
                     </div>
 
                     {/* Category Title & Info */}
@@ -641,15 +638,16 @@ export default function AdminCategoriesPage() {
                 {(categoryImagePreview || formData.image_url) && (
                   <div className="relative w-full h-32 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 group">
                     <img
-                      src={categoryImagePreview || formData.image_url}
+                      src={resolveProductImage(categoryImagePreview || formData.image_url)}
                       alt="Category Preview"
+                      onError={(e) => handleImageError(e)}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button
                         type="button"
                         onClick={() => categoryFileInputRef.current?.click()}
-                        className="px-3 py-1 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-100"
+                        className="px-3 py-1 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer"
                       >
                         Change Photo
                       </button>
@@ -658,9 +656,12 @@ export default function AdminCategoriesPage() {
                         onClick={() => {
                           setCategoryImageFile(null);
                           setCategoryImagePreview("");
-                          setFormData({ ...formData, image_url: "" });
+                          setFormData((prev) => ({ ...prev, image_url: "" }));
+                          if (categoryFileInputRef.current) {
+                            categoryFileInputRef.current.value = "";
+                          }
                         }}
-                        className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700"
+                        className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 cursor-pointer"
                         title="Remove Photo"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -705,21 +706,6 @@ export default function AdminCategoriesPage() {
                     • When category is updated/deleted, unreferenced image files are automatically pruned from server storage.
                   </p>
                 </div>
-
-                {/* Optional Fallback Text URL */}
-                <div className="space-y-1 pt-1">
-                  <label className="text-[10px] text-stone-500 font-medium">Or paste image URL (Optional fallback):</label>
-                  <input
-                    type="text"
-                    placeholder="https://... or /images/products/..."
-                    value={formData.image_url}
-                    onChange={(e) => {
-                      setFormData({ ...formData, image_url: e.target.value });
-                      if (!categoryImageFile) setCategoryImagePreview(e.target.value);
-                    }}
-                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-800 text-[11px] focus:outline-hidden focus:border-amber-600"
-                  />
-                </div>
               </div>
 
               {/* Accent Color Palette */}
@@ -734,9 +720,8 @@ export default function AdminCategoriesPage() {
                       key={color}
                       type="button"
                       onClick={() => setFormData({ ...formData, accentColor: color })}
-                      className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
-                        formData.accentColor === color ? "border-stone-900 scale-110 shadow-sm" : "border-transparent"
-                      }`}
+                      className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${formData.accentColor === color ? "border-stone-900 scale-110 shadow-sm" : "border-transparent"
+                        }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}

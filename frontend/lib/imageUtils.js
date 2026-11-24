@@ -2,15 +2,14 @@
  * Prime 3D World - Centralized Image URL & Error Handling Utilities
  */
 
-export const DEFAULT_PLACEHOLDER_IMAGE = "/images/products/placeholder.jpeg";
-export const BACKUP_HERO_IMAGE = "/images/products/fullbody-figurine-hero.jpeg";
+export const DEFAULT_PLACEHOLDER_IMAGE = "/images/products/placeholder.png";
 
 /**
  * Resolves any image URL (local upload, absolute URL, relative asset)
  * to an accessible URL in the browser and SSR.
  */
 export function resolveProductImage(src) {
-  if (!src || typeof src !== "string") {
+  if (!src || typeof src !== "string" || src.length === 0) {
     return DEFAULT_PLACEHOLDER_IMAGE;
   }
 
