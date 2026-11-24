@@ -79,7 +79,7 @@ export default function PromoMiniatureBanner({ className = "" }) {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <Link
-                href="/products/custom-3d-miniature"
+                href="/shop"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition-all active:scale-[0.99] group"
               >
                 <span>Customize Your Miniature Now</span>
@@ -117,7 +117,7 @@ export default function PromoMiniatureBanner({ className = "" }) {
               <div className="relative rounded-2xl bg-stone-900/90 border border-white/15 overflow-hidden shadow-2xl p-3.5 space-y-3">
                 <div className="relative aspect-4/5 w-full rounded-xl overflow-hidden bg-stone-950">
                   <Image
-                    src="/images/products/fullbody-figurine-hero.jpeg"
+                    src="/images/products/placeholder.png"
                     alt="Custom 3D Couple Miniature Handcrafted From Photo - Prime3D World"
                     fill
                     sizes="(max-width: 768px) 100vw, 400px"

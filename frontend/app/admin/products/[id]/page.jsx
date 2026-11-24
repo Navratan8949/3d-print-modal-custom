@@ -42,8 +42,10 @@ export default function AdminProductDetailPage({ params }) {
     price: "",
     originalPrice: "",
     material: "",
+    finishes: "",
     print_time: "",
     dimensions: "",
+    sizes: "",
     shortDescription: "",
     description: "",
     is_featured: false,
@@ -80,6 +82,18 @@ export default function AdminProductDetailPage({ params }) {
       const res = await productsAPI.getBySlugOrId(id);
       if (res && res.product) {
         const p = res.product;
+        const sizesString =
+          p.availableOptions?.sizes && Array.isArray(p.availableOptions.sizes) && p.availableOptions.sizes.length > 0
+            ? p.availableOptions.sizes.join(", ")
+            : p.dimensions || "Standard Scale (12-15 cm), Large Display (18-20 cm)";
+
+        const finishesString =
+          p.availableOptions?.finishes && Array.isArray(p.availableOptions.finishes) && p.availableOptions.finishes.length > 0
+            ? p.availableOptions.finishes.join(", ")
+            : p.availableOptions?.types && Array.isArray(p.availableOptions.types) && p.availableOptions.types.length > 0
+            ? p.availableOptions.types.join(", ")
+            : p.material || "Matte Natural, Artisan Hand-Detailed, Gloss Finish";
+
         setProduct(p);
         setForm({
           name: p.name || "",
@@ -88,8 +102,10 @@ export default function AdminProductDetailPage({ params }) {
           price: p.price || "",
           originalPrice: p.originalPrice || "",
           material: p.material || "High-Density UV Resin & Eco-PLA+",
+          finishes: finishesString,
           print_time: p.print_time || "1-2 working days",
           dimensions: p.dimensions || "12-15 cm height",
+          sizes: sizesString,
           shortDescription: p.shortDescription || "",
           description: p.description || "",
           is_featured: Boolean(p.is_featured),
@@ -138,9 +154,22 @@ export default function AdminProductDetailPage({ params }) {
       formData.append("categoryId", form.categoryId);
       formData.append("price", form.price);
       formData.append("originalPrice", form.originalPrice || 0);
-      formData.append("material", form.material);
+      const sizeArray = form.sizes
+        ? form.sizes.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const finishArray = form.finishes
+        ? form.finishes.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+
+      const availableOptions = {
+        ...(product?.availableOptions || {}),
+        sizes: sizeArray.length > 0 ? sizeArray : undefined,
+        finishes: finishArray.length > 0 ? finishArray : undefined,
+      };
+      formData.append("availableOptions", JSON.stringify(availableOptions));
+      formData.append("material", form.material || (finishArray[0] || "UV Resin & Eco-PLA"));
       formData.append("print_time", form.print_time);
-      formData.append("dimensions", form.dimensions);
+      formData.append("dimensions", form.dimensions || (sizeArray[0] || "12-15 cm height"));
       formData.append("shortDescription", form.shortDescription);
       formData.append("description", form.description);
       formData.append("is_featured", form.is_featured);
@@ -506,25 +535,91 @@ export default function AdminProductDetailPage({ params }) {
             </div>
           </div>
 
-          {/* 3D Manufacturing Specs */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-5">
-            <h2 className="font-serif font-bold text-base text-stone-900 border-b border-stone-100 pb-3 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-amber-600" />
-              <span>3D Printing Specifications</span>
-            </h2>
+          {/* 3D Manufacturing Specs & Customer Dynamic Options */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <h2 className="font-serif font-bold text-base text-stone-900 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-amber-600" />
+                <span>3D Printing Specs & Customer Dynamic Options</span>
+              </h2>
+              <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
+                Dynamic Dropdown Options
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-stone-700">Material</label>
-                <input
-                  type="text"
-                  value={form.material}
-                  onChange={(e) => setForm({ ...form, material: e.target.value })}
-                  placeholder="e.g. UV Resin / Eco-PLA"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
-                />
+            {/* Scale / Dimensions String Input */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">
+                  Select Scale / Dimensions Options (Comma-separated string input) <span className="text-amber-600">*</span>
+                </label>
+                <span className="text-[10px] text-stone-400">
+                  Shown under &quot;Select Scale / Dimensions&quot;
+                </span>
               </div>
+              <input
+                type="text"
+                value={form.sizes}
+                onChange={(e) => setForm({ ...form, sizes: e.target.value })}
+                placeholder="e.g. Standard Scale (12-15 cm), Large Display (18-20 cm), Grand 25 cm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600 font-medium"
+              />
+              {form.sizes && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-stone-500 font-semibold">Options Preview:</span>
+                  {form.sizes
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((s, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 text-[10px] font-bold"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                </div>
+              )}
+            </div>
 
+            {/* Finish / Material String Input */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">
+                  Select Finish / Material Options (Comma-separated string input) <span className="text-amber-600">*</span>
+                </label>
+                <span className="text-[10px] text-stone-400">
+                  Shown under &quot;Select Finish / Material&quot;
+                </span>
+              </div>
+              <input
+                type="text"
+                value={form.finishes}
+                onChange={(e) => setForm({ ...form, finishes: e.target.value })}
+                placeholder="e.g. Matte Natural, Artisan Hand-Detailed, Gloss Finish, Metallic Bronze"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600 font-medium"
+              />
+              {form.finishes && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-stone-500 font-semibold">Options Preview:</span>
+                  {form.finishes
+                    .split(",")
+                    .map((f) => f.trim())
+                    .filter(Boolean)
+                    .map((f, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold"
+                      >
+                        {f}
+                      </span>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-stone-700">Print Time</label>
                 <input
@@ -537,12 +632,12 @@ export default function AdminProductDetailPage({ params }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-stone-700">Dimensions</label>
+                <label className="text-xs font-semibold text-stone-700">Base Material Tag</label>
                 <input
                   type="text"
-                  value={form.dimensions}
-                  onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
-                  placeholder="e.g. 12-15 cm height"
+                  value={form.material}
+                  onChange={(e) => setForm({ ...form, material: e.target.value })}
+                  placeholder="e.g. UV Resin / Eco-PLA"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-900 focus:bg-white focus:outline-hidden focus:border-amber-600"
                 />
               </div>

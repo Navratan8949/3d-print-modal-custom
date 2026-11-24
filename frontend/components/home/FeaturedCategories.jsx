@@ -52,32 +52,14 @@ export default function FeaturedCategories() {
               href={`/shop?category=${catSlug}`}
               className="group relative flex flex-col justify-between rounded-2xl bg-white border border-stone-200 shadow-xs hover:shadow-xl hover:border-amber-400/80 transition-all duration-300 hover:-translate-y-1.5 overflow-hidden"
             >
-              {/* Visual Header: Strictly uses uploaded category image, never static public product mockups */}
+              {/* Visual Header: Strictly uses uploaded category image, fallback to placeholder.png */}
               <div className="relative aspect-16/10 w-full overflow-hidden bg-stone-100">
-                {category.image_url ? (
-                  <img
-                    src={resolveProductImage(category.image_url)}
-                    alt={category.name}
-                    onError={(e) => handleImageError(e)}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full flex flex-col items-center justify-center p-6 text-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${category.accentColor || "#D97706"}15 0%, ${category.accentColor || "#D97706"}35 100%)`,
-                    }}
-                  >
-                    <span className="font-serif font-bold text-xl text-stone-800 drop-shadow-2xs">
-                      {category.name}
-                    </span>
-                    {category.tagline && (
-                      <span className="text-[11px] text-stone-600 mt-1 font-medium">
-                        {category.tagline}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <img
+                  src={resolveProductImage(category.image_url)}
+                  alt={category.name}
+                  onError={(e) => handleImageError(e)}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                />
               </div>
 
               {/* Content */}

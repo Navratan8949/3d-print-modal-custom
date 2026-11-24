@@ -3,9 +3,7 @@
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, X, SlidersHorizontal, Sparkles } from "lucide-react";
-import SectionHeading from "@/components/common/SectionHeading";
 import ProductGrid from "@/components/products/ProductGrid";
-import PromoMiniatureBanner from "@/components/common/PromoMiniatureBanner";
 import { productsAPI, categoriesAPI } from "@/lib/api";
 
 function ShopContent() {
@@ -218,8 +216,8 @@ function ShopContent() {
             type="button"
             onClick={() => setSelectedCategory("all")}
             className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${selectedCategory === "all"
-                ? "bg-stone-900 text-white shadow-md shadow-stone-900/20 ring-2 ring-stone-900"
-                : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
+              ? "bg-stone-900 text-white shadow-md shadow-stone-900/20 ring-2 ring-stone-900"
+              : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
               }`}
           >
             All Products ({productsList.length})
@@ -232,8 +230,8 @@ function ShopContent() {
                 type="button"
                 onClick={() => setSelectedCategory(cat.slug || cat.id)}
                 className={`px-4 sm:px-5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${isSelected
-                    ? "bg-amber-600 text-white shadow-md shadow-amber-600/25 ring-2 ring-amber-600"
-                    : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
+                  ? "bg-amber-600 text-white shadow-md shadow-amber-600/25 ring-2 ring-amber-600"
+                  : "bg-white text-stone-800 border-2 border-stone-200 hover:border-amber-500 hover:bg-stone-50 shadow-2xs"
                   }`}
               >
                 {cat.name}
@@ -242,9 +240,6 @@ function ShopContent() {
           })}
         </div>
       </div>
-
-      {/* Promotional Custom 3D Miniature Spotlight Banner */}
-      <PromoMiniatureBanner />
 
       {/* Results Header Count */}
       <div className="flex items-center justify-between text-xs text-stone-500 px-1">

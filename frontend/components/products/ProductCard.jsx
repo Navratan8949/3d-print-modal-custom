@@ -151,7 +151,7 @@ export default function ProductCard({ product }) {
               type="button"
               onClick={handleQuickBuyNow}
               className="col-span-2 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] sm:text-xs font-bold shadow-xs transition-colors active:scale-95 cursor-pointer"
-              title="⚡ Buy Now (Instant Checkout)"
+              title="Buy Now (Instant Checkout)"
             >
               <Zap className="w-3.5 h-3.5 fill-current text-stone-950 shrink-0" />
               <span className="truncate">Buy Now</span>
