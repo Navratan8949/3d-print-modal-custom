@@ -52,13 +52,13 @@ export default function FeaturedCategories() {
               href={`/shop?category=${catSlug}`}
               className="group relative flex flex-col justify-between rounded-2xl bg-white border border-stone-200 shadow-xs hover:shadow-xl hover:border-amber-400/80 transition-all duration-300 hover:-translate-y-1.5 overflow-hidden"
             >
-              {/* Visual Header: Strictly uses uploaded category image, fallback to placeholder.png */}
-              <div className="relative aspect-16/10 w-full overflow-hidden bg-stone-100">
+              {/* Visual Header: Auto height uncropped category image */}
+              <div className="relative w-full overflow-hidden bg-stone-100/70 flex items-center justify-center min-h-[200px] sm:min-h-[240px]">
                 <img
                   src={resolveProductImage(category.image_url)}
                   alt={category.name}
                   onError={(e) => handleImageError(e)}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                  className="w-full h-auto max-h-[260px] sm:max-h-[300px] object-contain group-hover:scale-105 transition-transform duration-500 ease-out rounded-xl"
                 />
               </div>
 

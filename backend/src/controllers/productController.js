@@ -307,7 +307,7 @@ exports.createProduct = async (req, res) => {
       .map(sanitizeImageUrl)
       .filter((v, i, a) => typeof v === "string" && v && a.indexOf(v) === i);
 
-    const fallbackUrl = sanitizeImageUrl(req.body.image_url) || "/images/products/placeholder.jpeg";
+    const fallbackUrl = sanitizeImageUrl(req.body.image_url) || "";
     const image_url = images.length > 0 ? images[0] : fallbackUrl;
 
     // Parse options & specifications if sent as strings (e.g. from multipart formData)
@@ -473,79 +473,102 @@ exports.updateProduct = async (req, res) => {
       updateData.currentStock = Number(updateData.currentStock);
     }
 
-    // Handle existing images if provided (supports reordering or removing images)
-    const oldImages = [...(product.images || [])];
-    if (product.image_url && !oldImages.includes(product.image_url)) {
-      oldImages.push(product.image_url);
-    }
+    // ONLY modify images if the client actually provided an image update:
+    // 1) New files were uploaded (req.files.length > 0)
+    // 2) existingImages was explicitly passed (updateData.existingImages !== undefined)
+    // 3) An explicit image_url was passed (updateData.image_url !== undefined)
+    // 4) An explicit removeImages flag was passed
+    const hasImageUpdate =
+      (req.files && req.files.length > 0) ||
+      updateData.existingImages !== undefined ||
+      updateData.image_url !== undefined ||
+      req.body.removeImages === "true" ||
+      req.body.removeImages === true;
 
-    let currentImages = (product.images || [])
-      .map(sanitizeImageUrl)
-      .filter((v) => typeof v === "string" && v);
-
-    if (updateData.existingImages !== undefined) {
-      try {
-        const parsed =
-          typeof updateData.existingImages === "string"
-            ? JSON.parse(updateData.existingImages)
-            : updateData.existingImages;
-        if (Array.isArray(parsed)) {
-          currentImages = parsed
-            .map(sanitizeImageUrl)
-            .filter((v) => typeof v === "string" && v);
-        } else {
-          currentImages = [];
-        }
-      } catch (e) {
-        currentImages = [];
+    if (hasImageUpdate) {
+      const oldImages = [...(product.images || [])];
+      if (product.image_url && !oldImages.includes(product.image_url)) {
+        oldImages.push(product.image_url);
       }
+
+      let currentImages = [];
+      if (updateData.existingImages !== undefined) {
+        try {
+          const parsed =
+            typeof updateData.existingImages === "string"
+              ? JSON.parse(updateData.existingImages)
+              : updateData.existingImages;
+          if (Array.isArray(parsed)) {
+            currentImages = parsed
+              .map(sanitizeImageUrl)
+              .filter((v) => typeof v === "string" && v);
+          }
+        } catch (e) {
+          console.warn("Could not parse existingImages in updateProduct:", e.message);
+        }
+        delete updateData.existingImages;
+      } else {
+        // If existingImages was not passed but new images were uploaded, preserve current images
+        currentImages = [...oldImages];
+      }
+
+      // Uploaded new images from req.files
+      const newUploadedImages = (req.files && req.files.length > 0)
+        ? req.files.map((file) => `/uploads/products/${file.filename}`)
+        : [];
+
+      const primaryCoverSource = req.body.primaryCoverSource; // "new" | "existing"
+
+      let combinedImages = [];
+      if (primaryCoverSource === "new" && newUploadedImages.length > 0) {
+        combinedImages = [...newUploadedImages, ...currentImages];
+      } else {
+        combinedImages = [...currentImages, ...newUploadedImages];
+      }
+
+      // Filter duplicates, sanitize, and remove placeholder if real images exist
+      combinedImages = combinedImages
+        .map(sanitizeImageUrl)
+        .filter((v, i, a) => typeof v === "string" && v && a.indexOf(v) === i);
+
+      if (combinedImages.length > 1) {
+        combinedImages = combinedImages.filter((img) => !img.includes("placeholder"));
+      }
+
+      updateData.images = combinedImages;
+      if (combinedImages.length > 0) {
+        updateData.image_url = combinedImages[0];
+      } else {
+        updateData.image_url = sanitizeImageUrl(updateData.image_url) || "";
+      }
+
+      Object.assign(product, updateData);
+      if (updateData.availableOptions) {
+        product.availableOptions = updateData.availableOptions;
+        product.markModified("availableOptions");
+      }
+      await product.save();
+
+      // Clean up removed images that are no longer used by any product or category
+      const activeImages = new Set([product.image_url, ...(product.images || [])]);
+      const removedImages = oldImages.filter((img) => !activeImages.has(img));
+      if (removedImages.length > 0) {
+        deleteUnusedServerFiles(removedImages).catch((e) =>
+          console.warn("Cleanup unused product images error:", e.message)
+        );
+      }
+    } else {
+      // Non-image update (e.g. stock, price, status, title): Never wipe out existing images!
       delete updateData.existingImages;
-    }
+      delete updateData.images;
+      delete updateData.image_url;
 
-    // Uploaded new images from req.files
-    const newUploadedImages = (req.files && req.files.length > 0)
-      ? req.files.map((file) => `/uploads/products/${file.filename}`)
-      : [];
-
-    const primaryCoverSource = req.body.primaryCoverSource; // "new" | "existing"
-
-    let combinedImages = [];
-    if (primaryCoverSource === "new" && newUploadedImages.length > 0) {
-      combinedImages = [...newUploadedImages, ...currentImages];
-    } else {
-      combinedImages = [...currentImages, ...newUploadedImages];
-    }
-
-    // Filter duplicates, sanitize, and remove placeholder if real images exist
-    combinedImages = combinedImages
-      .map(sanitizeImageUrl)
-      .filter((v, i, a) => typeof v === "string" && v && a.indexOf(v) === i);
-
-    if (combinedImages.length > 1) {
-      combinedImages = combinedImages.filter((img) => !img.includes("placeholder"));
-    }
-
-    updateData.images = combinedImages;
-    if (combinedImages.length > 0) {
-      updateData.image_url = combinedImages[0];
-    } else {
-      updateData.image_url = sanitizeImageUrl(updateData.image_url) || "/images/products/placeholder.jpeg";
-    }
-
-    Object.assign(product, updateData);
-    if (updateData.availableOptions) {
-      product.availableOptions = updateData.availableOptions;
-      product.markModified("availableOptions");
-    }
-    await product.save();
-
-    // Clean up removed images that are no longer used by any product or category
-    const activeImages = new Set([product.image_url, ...(product.images || [])]);
-    const removedImages = oldImages.filter((img) => !activeImages.has(img));
-    if (removedImages.length > 0) {
-      deleteUnusedServerFiles(removedImages).catch((e) =>
-        console.warn("Cleanup unused product images error:", e.message)
-      );
+      Object.assign(product, updateData);
+      if (updateData.availableOptions) {
+        product.availableOptions = updateData.availableOptions;
+        product.markModified("availableOptions");
+      }
+      await product.save();
     }
 
     return res.status(200).json({
@@ -701,7 +724,7 @@ exports.deleteProductImage = async (req, res) => {
     // If the deleted image was the primary image_url, update image_url
     if (product.image_url === imageUrl) {
       product.image_url =
-        product.images.length > 0 ? product.images[0] : "/images/products/placeholder.jpeg";
+        product.images.length > 0 ? product.images[0] : "";
     }
 
     await product.save();

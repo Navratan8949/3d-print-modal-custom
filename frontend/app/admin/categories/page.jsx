@@ -168,7 +168,7 @@ export default function AdminCategoriesPage() {
         dataToSend.append("image", categoryImageFile);
       } else if (formData.image_url && formData.image_url.trim()) {
         dataToSend.append("image_url", formData.image_url.trim());
-      } else {
+      } else if (editingCategory && !formData.image_url) {
         dataToSend.append("image_url", "");
         dataToSend.append("removeImage", "true");
       }

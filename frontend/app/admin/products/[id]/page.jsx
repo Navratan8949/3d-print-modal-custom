@@ -183,9 +183,14 @@ export default function AdminProductDetailPage({ params }) {
       } else {
         formData.append("tags", JSON.stringify([]));
       }
-      const cleanExisting = (product.images || [])
+      const allExistingList = [
+        ...(product.images || []),
+        ...(product.image_url ? [product.image_url] : []),
+      ];
+      const cleanExisting = allExistingList
         .map((item) => (typeof item === "string" ? item.trim() : (item?.url || item?.src || item?.image_url || "")))
-        .filter((str) => typeof str === "string" && str.trim().length > 0 && str !== "{}" && str !== "[object Object]");
+        .filter((str) => typeof str === "string" && str.trim().length > 0 && str !== "{}" && str !== "[object Object]")
+        .filter((v, i, a) => a.indexOf(v) === i);
       formData.append("existingImages", JSON.stringify(cleanExisting));
 
       if (newImageFiles.length > 0) {

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, useMotionValue } from "framer-motion";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { productsAPI } from "@/lib/api";
-import { resolveProductImage, DEFAULT_PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
+import { resolveProductImage, handleImageError, DEFAULT_PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
 const formatCardProduct = (p) => ({
   id: p.id || p._id,
@@ -44,9 +44,8 @@ function StackCard({ product, index, total, onSendToBack }) {
 
   return (
     <motion.div
-      className={`absolute inset-0 will-change-transform transform-gpu ${
-        isFront ? "cursor-pointer" : "pointer-events-none"
-      }`}
+      className={`${isFront ? "relative w-full h-auto cursor-pointer" : "absolute inset-0 pointer-events-none"
+        } will-change-transform transform-gpu`}
       style={{
         x,
         zIndex: index + 1,
@@ -80,7 +79,7 @@ function StackCard({ product, index, total, onSendToBack }) {
         mass: 0.8,
       }}
     >
-      <div className="relative w-full h-full overflow-hidden rounded-2xl bg-white shadow-lg border border-stone-200/90 select-none flex flex-col justify-between">
+      <div className={`relative w-full overflow-hidden rounded-2xl bg-white shadow-lg border border-stone-200/90 select-none flex flex-col ${isFront ? "h-auto" : "h-full justify-between"}`}>
         {/* Top Badges */}
         <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
           <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-amber-800 shadow-xs border border-amber-200 uppercase tracking-wider">
@@ -92,26 +91,21 @@ function StackCard({ product, index, total, onSendToBack }) {
           </span>
         </div>
 
-        {/* Card Main Image */}
+        {/* Card Main Image - Auto height to fit image without blank space */}
         <Link
           href={`/products/${product.slug || product.id}`}
           onClick={(e) => {
             if (!isFront) e.preventDefault();
             e.stopPropagation();
           }}
-          className={`relative w-full flex-1 bg-stone-100 overflow-hidden block ${
-            isFront ? "cursor-pointer" : ""
-          }`}
+          className={`relative w-full block overflow-hidden bg-stone-50 ${isFront ? "cursor-pointer" : "flex-1"}`}
           title={`View details for ${product.name}`}
         >
-          <Image
+          <img
             src={product.imageUrl}
             alt={`${product.name} - Handcrafted 3D Print Figurine India`}
-            fill
-            priority={isFront}
-            loading={isFront ? "eager" : "lazy"}
-            sizes="(max-width: 640px) 280px, 370px"
-            className="object-cover pointer-events-none transition-transform duration-500 hover:scale-105"
+            onError={(e) => handleImageError(e)}
+            className={`w-full block mx-auto transition-transform duration-500 hover:scale-105 pointer-events-none ${isFront ? "h-auto max-h-[460px] object-contain" : "h-full object-cover"}`}
             draggable={false}
           />
         </Link>
@@ -237,7 +231,7 @@ export default function HeroCardStack({ initialProducts = [] }) {
   // Fast zero-waterfall: if items exist (e.g. from SSR initialProducts), render immediately without waiting for mounted!
   if (items.length === 0) {
     return (
-      <div className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] h-[390px] xs:h-[420px] sm:h-[460px] flex items-center justify-center bg-stone-100/80 rounded-2xl border border-stone-200">
+      <div className="relative w-[270px] xs:w-[290px] sm:w-[320px] md:w-[340px] max-w-[calc(100vw-2.5rem)] min-h-[380px] flex items-center justify-center bg-stone-100/80 rounded-2xl border border-stone-200">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-amber-600 rounded-full animate-spin" />
       </div>
     );
@@ -248,55 +242,109 @@ export default function HeroCardStack({ initialProducts = [] }) {
 
   return (
     <div
-      className="relative w-full flex flex-col items-center justify-center select-none overflow-hidden py-2"
+      className="relative w-full flex flex-col items-center justify-center select-none py-2 px-2 sm:px-4"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* 3D Card Stack Stage with Dynamic Depth Entrance Animation */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 30, rotateY: -8 }}
-        animate={{ opacity: 1, scale: 1, y: 0, rotateY: 0 }}
-        transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.25 }}
-        style={{ perspective: 1000 }}
-        className="relative w-[280px] xs:w-[300px] sm:w-[350px] max-w-[calc(100vw-3rem)] h-[390px] xs:h-[420px] sm:h-[460px] will-change-transform transform-gpu"
-      >
-        {visibleCards.map(({ prod, idx }) => (
-          <StackCard
-            key={prod.id}
-            product={prod}
-            index={idx}
-            total={items.length}
-            onSendToBack={sendToBack}
-          />
-        ))}
-      </motion.div>
-
-      {/* Clean Centered Scroll Status Points / Indicator Dots (All devices) */}
-      <div className="mt-5 flex items-center justify-center gap-1.5 w-full py-2">
-        {items.map((p, idx) => (
+      {/* 3D Card Stack Stage with Centered Layout & Non-Clipped Move Icon Buttons */}
+      <div className="relative flex items-center justify-center w-full px-7 sm:px-9">
+        <div className="relative w-[270px] xs:w-[290px] sm:w-[320px] md:w-[340px] max-w-[calc(100vw-5rem)]">
+          {/* Previous Image Move Button (Left) */}
           <button
-            key={p.id}
             type="button"
-            onClick={() => {
-              if (idx !== currentIndex) {
-                setItems((prev) => {
-                  const copy = [...prev];
-                  const currentPos = copy.findIndex((item) => item.id === p.id);
-                  if (currentPos !== -1) {
-                    return [...copy.slice(currentPos + 1), ...copy.slice(0, currentPos + 1)];
-                  }
-                  return prev;
-                });
-              }
+            onClick={(e) => {
+              e.stopPropagation();
+              cyclePrev();
             }}
-            className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-              idx === currentIndex
+            className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-stone-900 border-2 border-stone-200/90 shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer group/btn backdrop-blur-md ring-4 ring-amber-500/15 hover:ring-amber-500/35"
+            aria-label="Previous 3D Creation Image"
+            title="Previous Photo"
+          >
+            <ChevronLeft className="w-5 h-5 text-stone-800 group-hover/btn:text-amber-600 transition-colors shrink-0 stroke-[2.5]" />
+          </button>
+
+          {/* 3D Card Stack */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 30, rotateY: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0, rotateY: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.25 }}
+            style={{ perspective: 1000 }}
+            className="relative w-full will-change-transform transform-gpu"
+          >
+            {visibleCards.map(({ prod, idx }) => (
+              <StackCard
+                key={prod.id}
+                product={prod}
+                index={idx}
+                total={items.length}
+                onSendToBack={sendToBack}
+              />
+            ))}
+          </motion.div>
+
+          {/* Next Image Move Button (Right) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              cycleNext();
+            }}
+            className="absolute -right-4 sm:-right-6 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-stone-900 border-2 border-stone-200/90 shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer group/btn backdrop-blur-md ring-4 ring-amber-500/15 hover:ring-amber-500/35"
+            aria-label="Next 3D Creation Image"
+            title="Next Photo"
+          >
+            <ChevronRight className="w-5 h-5 text-stone-800 group-hover/btn:text-amber-600 transition-colors shrink-0 stroke-[2.5]" />
+          </button>
+        </div>
+      </div>
+
+      {/* Clean Centered Scroll Status Points / Indicator Dots with Move Buttons */}
+      <div className="mt-5 flex items-center justify-center gap-2.5 w-full py-2">
+        <button
+          type="button"
+          onClick={cyclePrev}
+          className="p-1 rounded-full text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+          aria-label="Previous Image"
+          title="Previous"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          {items.map((p, idx) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                if (idx !== currentIndex) {
+                  setItems((prev) => {
+                    const copy = [...prev];
+                    const currentPos = copy.findIndex((item) => item.id === p.id);
+                    if (currentPos !== -1) {
+                      return [...copy.slice(currentPos + 1), ...copy.slice(0, currentPos + 1)];
+                    }
+                    return prev;
+                  });
+                }
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${idx === currentIndex
                 ? "w-6 bg-amber-600 shadow-xs shadow-amber-600/30"
                 : "w-2 bg-stone-300 hover:bg-stone-400"
-            }`}
-            aria-label={`Go to creation ${idx + 1}`}
-          />
-        ))}
+                }`}
+              aria-label={`Go to creation ${idx + 1}`}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={cycleNext}
+          className="p-1 rounded-full text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+          aria-label="Next Image"
+          title="Next"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

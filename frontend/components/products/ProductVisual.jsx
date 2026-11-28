@@ -59,7 +59,7 @@ export default function ProductVisual({
             }
           }}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
+          className="object-contain object-center transition-transform duration-500 ease-out group-hover:scale-105 p-1"
           priority={priority}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-stone-900/15 via-transparent to-transparent pointer-events-none opacity-40 group-hover:opacity-20 transition-opacity" />

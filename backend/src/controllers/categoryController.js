@@ -38,7 +38,7 @@ exports.getAllCategories = async (req, res) => {
         description: cat.description,
         tagline: cat.tagline,
         accentColor: cat.accentColor,
-        image_url: cat.image_url || "/images/products/placeholder.png",
+        image_url: cat.image_url || "",
         itemCount: `${count} Item${count === 1 ? "" : "s"}`,
         actualProductCount: count,
         order: cat.order,
@@ -233,18 +233,15 @@ exports.updateCategory = async (req, res) => {
     if (tagline !== undefined) category.tagline = tagline.trim();
     if (accentColor !== undefined) category.accentColor = accentColor.trim();
 
-    const shouldRemoveImage =
+    const isExplicitRemove =
       removeImage === "true" ||
-      removeImage === true ||
-      image_url === "" ||
-      image_url === null ||
-      image_url === "null";
+      removeImage === true;
 
     if (req.file) {
       category.image_url = `/uploads/categories/${req.file.filename}`;
-    } else if (shouldRemoveImage) {
+    } else if (isExplicitRemove) {
       category.image_url = "";
-    } else if (image_url !== undefined && typeof image_url === "string") {
+    } else if (image_url !== undefined && typeof image_url === "string" && image_url.trim().length > 0) {
       category.image_url = image_url.trim();
     }
 
