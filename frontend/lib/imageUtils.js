@@ -14,7 +14,7 @@ export function resolveProductImage(src) {
   }
 
   const trimmed = src.trim();
-  if (!trimmed) {
+  if (!trimmed || trimmed === "/images/products/placeholder.jpeg") {
     return DEFAULT_PLACEHOLDER_IMAGE;
   }
 

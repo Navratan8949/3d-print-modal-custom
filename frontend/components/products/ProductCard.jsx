@@ -6,6 +6,7 @@ import { MessageCircle, ShoppingBag, ArrowRight, Zap, Star } from "lucide-react"
 import ProductVisual from "./ProductVisual";
 import { useCart } from "@/context/CartContext";
 import { createProductWhatsAppUrl } from "@/lib/whatsapp";
+import { resolveProductImage, handleImageError } from "@/lib/imageUtils";
 
 export default function ProductCard({ product }) {
   const router = useRouter();
@@ -51,20 +52,20 @@ export default function ProductCard({ product }) {
 
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl bg-white border border-stone-200/90 shadow-2xs hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-      {/* Top Image Container */}
+      {/* Top Image Container: Auto height uncropped product image */}
       <Link
         href={`/products/${product.slug}`}
-        className="relative block w-full overflow-hidden bg-stone-100"
+        className="relative block w-full overflow-hidden bg-stone-100/70 flex items-center justify-center min-h-[220px] sm:min-h-[260px]"
       >
-        <ProductVisual
-          src={product.image_url || product.images?.[0]}
-          imageKey={product.imageKey}
+        <img
+          src={resolveProductImage(product.image_url || product.images?.[0])}
           alt={`${product.name} - Custom 3D print in India`}
-          aspectRatio="4/3"
+          onError={(e) => handleImageError(e)}
+          className="w-full h-auto max-h-[280px] sm:max-h-[340px] object-contain transition-transform duration-500 ease-out group-hover:scale-105 rounded-xl"
         />
 
         {/* Top Badges */}
-        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
           <span className="bg-stone-900/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
             #{product.id}
           </span>

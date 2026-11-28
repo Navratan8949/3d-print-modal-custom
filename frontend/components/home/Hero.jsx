@@ -87,9 +87,10 @@ export default function Hero({ initialProducts = [] }) {
       <div className="absolute top-1/3 -right-20 w-80 sm:w-96 h-80 sm:h-96 rounded-full bg-orange-400/10 blur-3xl animate-pulse pointer-events-none duration-1000" />
 
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-8 lg:gap-x-8 items-center">
-          {/* Left Column: Editorial Copy, Badges & CTAs */}
-          <div className="lg:col-span-7 space-y-6 sm:space-y-7 lg:pr-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-6 sm:gap-y-8 lg:gap-x-10 items-center">
+
+          {/* Block 1: Main Eyebrow & Headline (Appears top on mobile and desktop) */}
+          <div className="lg:col-span-7 lg:col-start-1 lg:row-start-1 space-y-4 lg:pr-6">
             {/* Live Eyebrow Badge */}
             <motion.div
               variants={itemVariants}
@@ -109,7 +110,20 @@ export default function Hero({ initialProducts = [] }) {
                 One Layer at a Time!
               </span>
             </motion.h1>
+          </div>
 
+          {/* Block 2: Interactive 3D Showcase Card Deck (Directly below headline on mobile; right column spanning rows on desktop) */}
+          <div className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 flex flex-col items-center justify-center py-2 lg:py-0 w-full">
+            {/* Mobile swipe helper tag with real vector icon */}
+            <div className="sm:hidden mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-900/90 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 shadow-2xs">
+              <Layers className="w-3 h-3 text-amber-700 shrink-0" />
+              <span>Swipe or use arrows to explore 3D creations</span>
+            </div>
+            <HeroCardStack initialProducts={initialProducts} />
+          </div>
+
+          {/* Block 3: Subheading, Pills, Action CTAs & Trust Proof (Below Card Stack on mobile; bottom left col on desktop) */}
+          <div className="lg:col-span-7 lg:col-start-1 lg:row-start-2 space-y-6 sm:space-y-7 lg:pr-6">
             {/* Subheading */}
             <motion.p
               variants={itemVariants}
@@ -176,56 +190,47 @@ export default function Hero({ initialProducts = [] }) {
                 <span>Custom Figurine from Photo →</span>
               </Link>
             </motion.div>
+
+            {/* Trust Proof - Clean Inline Bar */}
+            <motion.div
+              variants={itemVariants}
+              className="pt-4 border-t border-stone-200/70 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-stone-600 will-change-transform transform-gpu"
+            >
+              <div className="flex items-center gap-2 group cursor-default">
+                <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                </div>
+                <div>
+                  <span className="font-semibold text-stone-900">4.9/5 Rating</span>
+                  <span className="text-stone-400 mx-1.5 hidden sm:inline">•</span>
+                  <span className="text-stone-500 hidden sm:inline">500+ Happy Orders</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 group cursor-default">
+                <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <div>
+                  <span className="font-semibold text-stone-900">100% Custom Made</span>
+                  <span className="text-stone-400 mx-1.5 hidden sm:inline">•</span>
+                  <span className="text-stone-500 hidden sm:inline">Photo to 3D Print</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 group cursor-default">
+                <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                </div>
+                <div>
+                  <span className="font-semibold text-stone-900">Pan-India Delivery</span>
+                  <span className="text-stone-400 mx-1.5 hidden sm:inline">•</span>
+                  <span className="text-stone-500 hidden sm:inline">Safe Gift Packaged</span>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
-          {/* Interactive 3D Showcase Card Deck (Directly below buttons on mobile, right column on desktop) */}
-          <div className="lg:col-span-5 lg:row-start-1 lg:row-span-2 flex flex-col items-center justify-center pt-2 lg:pt-0">
-            {/* Mobile swipe helper tag with real vector icon */}
-            <div className="sm:hidden mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-900/90 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 shadow-2xs">
-              <Layers className="w-3 h-3 text-amber-700 shrink-0" />
-              <span>Swipe cards to explore 3D creations</span>
-            </div>
-            <HeroCardStack initialProducts={initialProducts} />
-          </div>
-
-          {/* Trust Proof - Clean Inline Bar */}
-          <motion.div
-            variants={itemVariants}
-            className="lg:col-span-7 pt-4 border-t border-stone-200/70 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-stone-600 lg:pr-6 will-change-transform transform-gpu"
-          >
-            <div className="flex items-center gap-2 group cursor-default">
-              <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              </div>
-              <div>
-                <span className="font-semibold text-stone-900">4.9/5 Rating</span>
-                <span className="text-stone-400 mx-1.5 hidden sm:inline">•</span>
-                <span className="text-stone-500 hidden sm:inline">500+ Happy Orders</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 group cursor-default">
-              <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-              </div>
-              <div>
-                <span className="font-semibold text-stone-900">100% Custom Made</span>
-                <span className="text-stone-400 mx-1.5 hidden sm:inline">•</span>
-                <span className="text-stone-500 hidden sm:inline">Photo to 3D Print</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 group cursor-default">
-              <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <Truck className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-              <div>
-                <span className="font-semibold text-stone-900">Pan-India Delivery</span>
-                <span className="text-stone-400 mx-1.5 hidden sm:inline">•</span>
-                <span className="text-stone-500 hidden sm:inline">Safe Gift Packaged</span>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </div>
     </motion.section>

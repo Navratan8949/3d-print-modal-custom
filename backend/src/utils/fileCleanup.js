@@ -13,7 +13,21 @@ const deleteUnusedServerFile = async (rawPath) => {
   if (!rawPath || typeof rawPath !== "string") return;
 
   const normalized = rawPath.replace(/\\/g, "/").trim();
-  // We only touch files that live under uploads/
+
+  // Safety check: Never touch placeholders, defaults, external URLs, or static assets
+  if (
+    normalized.includes("placeholder") ||
+    normalized.includes("default") ||
+    normalized.includes("/images/") ||
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:")
+  ) {
+    return;
+  }
+
+  // We only touch files that live strictly under uploads/
   if (!normalized.startsWith("/uploads/") && !normalized.startsWith("uploads/")) {
     return;
   }

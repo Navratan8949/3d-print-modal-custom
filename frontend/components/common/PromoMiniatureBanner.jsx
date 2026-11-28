@@ -79,7 +79,7 @@ export default function PromoMiniatureBanner({ className = "" }) {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <Link
-                href="/shop"
+                href="/products/custom-3d-miniature-figurine-solo"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition-all active:scale-[0.99] group"
               >
                 <span>Customize Your Miniature Now</span>
@@ -117,7 +117,7 @@ export default function PromoMiniatureBanner({ className = "" }) {
               <div className="relative rounded-2xl bg-stone-900/90 border border-white/15 overflow-hidden shadow-2xl p-3.5 space-y-3">
                 <div className="relative aspect-4/5 w-full rounded-xl overflow-hidden bg-stone-950">
                   <Image
-                    src="/images/products/placeholder.png"
+                    src="/images/products/custiom_3d_miniture.jpeg"
                     alt="Custom 3D Couple Miniature Handcrafted From Photo - Prime3D World"
                     fill
                     sizes="(max-width: 768px) 100vw, 400px"
@@ -125,10 +125,6 @@ export default function PromoMiniatureBanner({ className = "" }) {
                   />
                   <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-stone-950/80 backdrop-blur-md text-[11px] font-bold text-amber-400 border border-amber-400/30">
                     Ultra-HD Resin
-                  </div>
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5 p-2 rounded-lg bg-stone-950/80 backdrop-blur-md text-[11px] text-stone-300 flex items-center justify-between border border-white/10">
-                    <span className="font-semibold text-white">Full-Body Artisan Detailing</span>
-                    <span className="text-amber-400 font-bold">Starts ₹1,499</span>
                   </div>
                 </div>
 
@@ -143,12 +139,6 @@ export default function PromoMiniatureBanner({ className = "" }) {
                     <span>Natural Oak Base</span>
                   </span>
                 </div>
-              </div>
-
-              {/* Floating Mini Badge */}
-              <div className="absolute -bottom-4 -left-4 hidden sm:flex items-center gap-2 p-2.5 rounded-xl bg-stone-900/95 border border-amber-500/30 shadow-xl backdrop-blur-md text-xs text-stone-200">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Over 1,200+ Photo Miniatures Sculpted</span>
               </div>
             </div>
           </div>
